@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import io from 'socket.io-client';
 import AppSideBar from './components/AppSideBar';
 import { IoMenu } from "react-icons/io5";
-
+import Editor from '@monaco-editor/react';
 const socket = io("http://localhost:5000");
 
 function App() {
@@ -10,7 +10,8 @@ function App() {
   const [currentRoom, setCurrentRoom] = useState('');
   const [currentUser, setCurrentUser] = useState('');
   const [openSideBar, setOpenSideBar] = useState(true);
-
+  const [language, setLanguage] = useState('javascript');
+  const [code, setCode] = useState('');
   const HandleJoinRoom = async (roomId, username) => {
     if (roomId && username) {
       socket.emit("join", { roomId, username });
@@ -19,33 +20,48 @@ function App() {
       setJoined(true);
     }
   };
+  // Handle socket events
+  const handleEditorChange = () => {
+    socket.on("codeUpdate", (newCode) => {
+      setCode(newCode);
+    });
+  };
 
   // Join Room UI
   if (!joined) {
     return (
       <div className="h-screen bg-gray-800 text-white">
-        <div className="flex flex-col items-center h-full justify-center mx-auto">
-          <h1 className="text-2xl font-bold mb-4">Join a Room</h1>
-          <input
-            className="border border-gray-300 p-2 rounded mb-4"
-            type="text"
-            value={currentRoom}
-            onChange={(e) => setCurrentRoom(e.target.value)}
-            placeholder="Room ID"
-          />
-          <input
-            className="border border-gray-300 p-2 rounded mb-4"
-            type="text"
-            value={currentUser}
-            onChange={(e) => setCurrentUser(e.target.value)}
-            placeholder="Username"
-          />
-          <button
-            onClick={() => HandleJoinRoom(currentRoom, currentUser)}
-            className="bg-blue-500 text-white p-2 rounded w-fit"
-          >
-            Join Room
-          </button>
+        <div className=" flex items-center justify-center h-full w-full">
+          <div className="flex flex-col items-center h-fit justify-center mx-auto border-2 p-4 rounded">
+            <h1 className="text-2xl font-bold mb-4">Join a Room</h1>
+            <div className='p-2 flex items-center gap-2'>
+              <label htmlFor="roomId" className="mb-2">Room ID:</label>
+              <input
+                className="border border-gray-300 p-2 rounded mb-4"
+                type="text"
+                value={currentRoom}
+                onChange={(e) => setCurrentRoom(e.target.value)}
+                placeholder="Room ID"
+              />
+
+            </div>
+            <div className='p-2 flex items-center gap-2'>
+              <label htmlFor="username" className="mb-2">Username: </label>
+              <input
+                className="border border-gray-300 p-2 rounded mb-4"
+                type="text"
+                value={currentUser}
+                onChange={(e) => setCurrentUser(e.target.value)}
+                placeholder="Username"
+              />
+            </div>
+            <button
+              onClick={() => HandleJoinRoom(currentRoom, currentUser)}
+              className="bg-blue-500 text-white p-2 px-6 rounded w-fit"
+            >
+              Join Room
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -58,12 +74,12 @@ function App() {
       <div
         className={`
           fixed top-0 left-0 h-screen bg-gray-800 text-white p-4 overflow-auto
-          transition-transform duration-500 ease-in-out
+          transition-transform duration-300 ease-in-out
           ${openSideBar ? 'translate-x-0 ' : '-translate-x-full w-0'}
         `}
         style={{ zIndex: 50 }}
       >
-        <AppSideBar currentRoom={currentRoom} currentUser={currentUser} />
+        <AppSideBar currentRoom={currentRoom} currentUser={currentUser} language={language} setLanguage={setLanguage} />
       </div>
 
       {/* Optional: overlay */}
@@ -77,8 +93,8 @@ function App() {
 
 
       {/* Editor area */}
-      <div className="flex-1 p-4">
-        <div className="flex justify-between items-center border-2 p-2">
+      <div className="flex-1 p-4 w-screen bg-gray-900 text-white border-gray-700">
+        <div className="flex justify-between items-center border-2 border-gray-700 p-2 h-[6vh]">
           <div className="flex items-center justify-center h-full">
             <h2 className="text-xl font-bold">Code Editor</h2>
           </div>
@@ -88,7 +104,17 @@ function App() {
             onClick={() => setOpenSideBar(!openSideBar)}
           />
         </div>
-        {/* Code editor component goes here */}
+        <div className='p-4 mt-2 mb-2 border-2 border-gray-700 rounded h-[calc(100vh-12vh)]'>
+          <Editor
+            height={"100%"}
+            language={language}
+            value={code}
+            onChange={handleEditorChange}
+            theme='vs-dark'
+            className='border-2 rounded border-gray-700 p-4 bg-[#1e1e1e]'
+          />
+        </div>
+
       </div>
     </div>
   );
