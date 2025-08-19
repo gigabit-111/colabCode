@@ -3,6 +3,7 @@ import http from 'http';
 import {
   Server
 } from 'socket.io';
+import axios from 'axios';
 const app = express();
 
 const server = http.createServer(app);
@@ -65,6 +66,23 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("userTyping", username);
   });
 
+  socket.on("compilecode",async({code,roomId,language,version}) => {
+    if(rooms.has(roomId)) {
+      const room = rooms.get(roomId);
+      const response = await axios.post("https://emkc.org/api/v2/piston/execute", {
+        language,
+        version,
+        files:[
+          {
+            content: code,
+          }
+        ]
+      });
+
+      room.output = response.data.run.output;
+      io.to(roomId).emit("coderesponse", response.data);
+    }
+  });
 
   socket.on("languageChange", ({
     roomId,
