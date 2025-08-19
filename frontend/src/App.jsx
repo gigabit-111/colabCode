@@ -16,6 +16,9 @@ function App() {
   const [users, setUsers] = useState([]);
   const [typing, setTyping] = useState('');
   const typingTimeoutRef = useRef(null);
+  const [version, setVersion] = useState('*');
+  const [output, setOutput] = useState('');
+  const [outputLoading, setOutputLoading] = useState(false);
   useEffect(() => {
     socket.on("userJoined", (username) => {
       setUsers(username);
@@ -39,15 +42,20 @@ function App() {
     });
 
     socket.on("languageUpdate", (newLanguage) => {
-        setLanguage(newLanguage);
+      setLanguage(newLanguage);
     });
 
+    socket.on("coderesponse", (response) => {
+      setOutput(response.run.output);
+      setOutputLoading(false);
+    });
 
     return () => {
       socket.off("userJoined");
       socket.off("codeUpdate");
       socket.off("userTyping");
       socket.off("languageUpdate");
+      socket.off("coderesponse");
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
@@ -100,6 +108,11 @@ function App() {
     const newLanguage = e.target.value;
     setLanguage(newLanguage);
     socket.emit("languageChange", { roomId: currentRoom, language: newLanguage });
+  };
+
+  const handleRunCode = () => {
+    setOutputLoading(true);
+    socket.emit("compilecode", { code, roomId: currentRoom, language, version });
   };
 
   // Join Room UI
@@ -179,7 +192,7 @@ function App() {
             onClick={() => setOpenSideBar(!openSideBar)}
           />
         </div>
-        <div className='p-4 mt-2 mb-2 border-2 border-gray-700 rounded h-[calc(100vh-12vh)]'>
+        <div className='p-4 mt-2 mb-2 border-2 border-gray-700 rounded h-[calc(100vh-48vh)]'>
           <Editor
             height={"100%"}
             language={language}
@@ -194,6 +207,17 @@ function App() {
             }}
             className='border-2 rounded border-gray-700 p-4 bg-[#1e1e1e]'
           />
+        </div>
+        <div className='p-4 h-[calc(100vh-48vh)] overflow-hidden border-2 border-gray-700 rounded text-white'>
+          <button
+            onClick={handleRunCode}
+            disabled={outputLoading}
+            className={`p-2 rounded mb-2 ${outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"} text-white`}
+          >
+            {outputLoading ? "Running..." : "Execute"}
+          </button>
+
+          <textarea className="bg-gray-800 p-2 rounded h-[90%] border-2 border-gray-700 w-full" placeholder="Output will appear here......" value={output} readOnly />
         </div>
       </div>
     </div>
