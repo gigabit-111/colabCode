@@ -1,17 +1,71 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import io from 'socket.io-client';
 import AppSideBar from './components/AppSideBar';
 import { IoMenu } from "react-icons/io5";
 import Editor from '@monaco-editor/react';
+import { useEffect } from 'react';
 const socket = io("http://localhost:5000");
 
 function App() {
-  const [joined, setJoined] = useState(false); // Show join screen initially
+  const [joined, setJoined] = useState(false);
   const [currentRoom, setCurrentRoom] = useState('');
   const [currentUser, setCurrentUser] = useState('');
   const [openSideBar, setOpenSideBar] = useState(true);
   const [language, setLanguage] = useState('javascript');
   const [code, setCode] = useState('');
+  const [users, setUsers] = useState([]);
+  const [typing, setTyping] = useState('');
+  const typingTimeoutRef = useRef(null);
+  useEffect(() => {
+    socket.on("userJoined", (username) => {
+      setUsers(username);
+    });
+
+    socket.on("codeUpdate", (newCode) => {
+      setCode(newCode);
+    });
+
+    socket.on("userTyping", (username) => {
+      setTyping(username);
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      typingTimeoutRef.current = setTimeout(() => {
+        setTyping('');
+        typingTimeoutRef.current = null;
+      }, 2000);
+    });
+
+    socket.on("languageUpdate", (newLanguage) => {
+        setLanguage(newLanguage);
+    });
+
+
+    return () => {
+      socket.off("userJoined");
+      socket.off("codeUpdate");
+      socket.off("userTyping");
+      socket.off("languageUpdate");
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useState(() => {
+    const handleBeforeUnload = () => {
+      socket.emit("leaveRoom");
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
   const HandleJoinRoom = async (roomId, username) => {
     if (roomId && username) {
       socket.emit("join", { roomId, username });
@@ -21,10 +75,31 @@ function App() {
     }
   };
   // Handle socket events
-  const handleEditorChange = () => {
-    socket.on("codeUpdate", (newCode) => {
-      setCode(newCode);
-    });
+  const handleEditorChange = (newCode) => {
+    setCode(newCode);
+    socket.emit("codeChange", { roomId: currentRoom, code: newCode });
+    socket.emit("userTyping", { roomId: currentRoom, username: currentUser });
+  };
+
+  // Handle user left event
+  const handleUserLeft = () => {
+    socket.emit("leaveRoom", { roomId: currentRoom, username: currentUser });
+    setJoined(false);
+    setCurrentRoom('');
+    setCurrentUser('');
+    setLanguage('javascript');
+  };
+
+  const copyRoomId = () => {
+    navigator.clipboard.writeText(currentRoom);
+    //setCopySuccess("Copied!");
+    //setTimeout(() => setCopySuccess(""), 2000);
+  };
+
+  const handleLanguageChange = (e) => {
+    const newLanguage = e.target.value;
+    setLanguage(newLanguage);
+    socket.emit("languageChange", { roomId: currentRoom, language: newLanguage });
   };
 
   // Join Room UI
@@ -79,7 +154,7 @@ function App() {
         `}
         style={{ zIndex: 50 }}
       >
-        <AppSideBar currentRoom={currentRoom} currentUser={currentUser} language={language} setLanguage={setLanguage} />
+        <AppSideBar typing={typing} handleLanguageChange={handleLanguageChange} copyRoomId={copyRoomId} handleUserLeft={handleUserLeft} currentRoom={currentRoom} currentUser={currentUser} language={language} setLanguage={setLanguage} users={users} />
       </div>
 
       {/* Optional: overlay */}
@@ -109,12 +184,17 @@ function App() {
             height={"100%"}
             language={language}
             value={code}
-            onChange={handleEditorChange}
+            onChange={(newCode) => handleEditorChange(newCode)}
             theme='vs-dark'
+            options={{
+              minimap: { enabled: false },
+              fontSize: 16,
+              lineHeight: 22,
+
+            }}
             className='border-2 rounded border-gray-700 p-4 bg-[#1e1e1e]'
           />
         </div>
-
       </div>
     </div>
   );
