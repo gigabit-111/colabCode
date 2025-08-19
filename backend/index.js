@@ -1,6 +1,8 @@
 import express from 'express';
 import http from 'http';
-import {Server} from 'socket.io';
+import {
+  Server
+} from 'socket.io';
 const app = express();
 
 const server = http.createServer(app);
@@ -19,8 +21,11 @@ io.on("connection", (socket) => {
   let currentRoom = null;
   let currentUser = null;
 
-  socket.on("join", ({roomId, username}) => {
-    if(currentRoom) {
+  socket.on("join", ({
+    roomId,
+    username
+  }) => {
+    if (currentRoom) {
       socket.leave(currentRoom);
       rooms.get(currentRoom).delete(currentUser);
       io.to(currentRoom).emit("userLeft", Array.from(rooms.get(currentRoom)));
@@ -31,7 +36,7 @@ io.on("connection", (socket) => {
     currentUser = username;
     socket.join(roomId);
 
-    if(!rooms.has(roomId)) {
+    if (!rooms.has(roomId)) {
       rooms.set(roomId, new Set());
     }
     rooms.get(roomId).add(username);
@@ -40,13 +45,52 @@ io.on("connection", (socket) => {
     console.log(`User ${username} joined room ${roomId}`);
   });
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected", socket.id);
-    if (currentRoom) {
+  socket.on("leaveRoom", () => {
+    if (currentRoom && currentUser) {
+      // socket.leave(currentRoom);
+      rooms.get(currentRoom).delete(currentUser);
+      io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom)));
+
       socket.leave(currentRoom);
+      currentRoom = null;
+      currentUser = null;
       console.log(`User ${socket.id} left room ${currentRoom}`);
     }
   });
+
+  socket.on("userTyping", ({
+    roomId,
+    username
+  }) => {
+    socket.to(roomId).emit("userTyping", username);
+  });
+
+
+  socket.on("languageChange", ({
+    roomId,
+    language
+  }) => {
+    io.to(roomId).emit("languageUpdate", language);
+  });
+
+  socket.on("codeChange", ({
+    roomId,
+    code
+  }) => {
+    socket.to(roomId).emit("codeUpdate", code);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected", socket.id);
+    if (currentRoom && currentUser) {
+      //socket.leave(currentRoom);
+      rooms.get(currentRoom).delete(currentUser);
+      io.to(currentRoom).emit("userLeft", Array.from(rooms.get(currentRoom)));
+      console.log(`User ${socket.id} left room ${currentRoom}`);
+    }
+  });
+
+
 });
 
 const port = process.env.PORT || 5000;
