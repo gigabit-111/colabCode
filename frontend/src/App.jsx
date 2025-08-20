@@ -1,11 +1,11 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react';
 import io from 'socket.io-client';
-import AppSideBar from './components/AppSideBar';
-import { IoMenu } from "react-icons/io5";
+import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import Editor from '@monaco-editor/react';
-import { useEffect } from 'react';
+import AppSideBar from './components/AppSideBar';
+import { IoMenu } from 'react-icons/io5';
+
 const socket = io("http://localhost:5000");
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 function App() {
   const [joined, setJoined] = useState(false);
@@ -17,12 +17,14 @@ function App() {
   const [users, setUsers] = useState([]);
   const [typing, setTyping] = useState('');
   const typingTimeoutRef = useRef(null);
-  const [version, setVersion] = useState('*');
+  const [version] = useState('*');
   const [output, setOutput] = useState('');
   const [outputLoading, setOutputLoading] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+
   useEffect(() => {
-    socket.on("userJoined", (username) => {
-      setUsers(username);
+    socket.on("userJoined", (userList) => {
+      setUsers(userList);
     });
 
     socket.on("codeUpdate", (newCode) => {
@@ -30,12 +32,8 @@ function App() {
     });
 
     socket.on("userTyping", (username) => {
-      setTyping(username);
-
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-
+      setTyping(username === currentUser ? 'Me' : username);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
         setTyping('');
         typingTimeoutRef.current = null;
@@ -49,6 +47,22 @@ function App() {
     socket.on("coderesponse", (response) => {
       setOutput(response.run.output);
       setOutputLoading(false);
+      setIsExecuting(false);
+    });
+
+    socket.on("codeexecutionStarted", () => {
+      setIsExecuting(true);
+    });
+
+    socket.on("codeexecutionEnded", () => {
+      setIsExecuting(false);
+      setOutputLoading(false);
+    });
+
+    socket.on("codeexecutionBusy", ({ message }) => {
+      alert(message);
+      setOutputLoading(false);
+      setIsExecuting(false);
     });
 
     return () => {
@@ -57,25 +71,24 @@ function App() {
       socket.off("userTyping");
       socket.off("languageUpdate");
       socket.off("coderesponse");
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+      socket.off("codeexecutionStarted");
+      socket.off("codeexecutionEnded");
+      socket.off("codeexecutionBusy");
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
-  }, []);
+  }, [currentUser]);
 
-  useState(() => {
+  useEffect(() => {
     const handleBeforeUnload = () => {
-      socket.emit("leaveRoom");
-    }
-
+      socket.emit("leaveRoom", { roomId: currentRoom, username: currentUser });
+    };
     window.addEventListener("beforeunload", handleBeforeUnload);
-
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, []);
+  }, [currentRoom, currentUser]);
 
-  const HandleJoinRoom = async (roomId, username) => {
+  const HandleJoinRoom = (roomId, username) => {
     if (roomId && username) {
       socket.emit("join", { roomId, username });
       setCurrentRoom(roomId);
@@ -83,26 +96,26 @@ function App() {
       setJoined(true);
     }
   };
-  // Handle socket events
+
   const handleEditorChange = (newCode) => {
     setCode(newCode);
     socket.emit("codeChange", { roomId: currentRoom, code: newCode });
     socket.emit("userTyping", { roomId: currentRoom, username: currentUser });
   };
 
-  // Handle user left event
   const handleUserLeft = () => {
     socket.emit("leaveRoom", { roomId: currentRoom, username: currentUser });
     setJoined(false);
     setCurrentRoom('');
     setCurrentUser('');
     setLanguage('javascript');
+    setCode('');
+    setUsers([]);
+    setOutput('');
   };
 
   const copyRoomId = () => {
     navigator.clipboard.writeText(currentRoom);
-    //setCopySuccess("Copied!");
-    //setTimeout(() => setCopySuccess(""), 2000);
   };
 
   const handleLanguageChange = (e) => {
@@ -112,85 +125,80 @@ function App() {
   };
 
   const handleRunCode = () => {
-    setOutputLoading(true);
-    socket.emit("compilecode", { code, roomId: currentRoom, language, version });
+    if (!isExecuting) {
+      setOutputLoading(true);
+      socket.emit("compilecode", { code, roomId: currentRoom, language, version });
+    }
   };
 
-  // Join Room UI
   if (!joined) {
     return (
-      <div className="h-screen bg-gray-800 text-white">
-        <div className=" flex items-center justify-center h-full w-full">
-          <div className="flex flex-col items-center h-fit justify-center mx-auto border-2 p-4 rounded">
-            <h1 className="text-2xl font-bold mb-4">Join a Room</h1>
-            <div className='p-2 flex items-center gap-2'>
-              <label htmlFor="roomId" className="mb-2">Room ID:</label>
-              <input
-                className="border border-gray-300 p-2 rounded mb-4"
-                type="text"
-                value={currentRoom}
-                onChange={(e) => setCurrentRoom(e.target.value)}
-                placeholder="Room ID"
-              />
-
-            </div>
-            <div className='p-2 flex items-center gap-2'>
-              <label htmlFor="username" className="mb-2">Username: </label>
-              <input
-                className="border border-gray-300 p-2 rounded mb-4"
-                type="text"
-                value={currentUser}
-                onChange={(e) => setCurrentUser(e.target.value)}
-                placeholder="Username"
-              />
-            </div>
-            <button
-              onClick={() => HandleJoinRoom(currentRoom, currentUser)}
-              className="bg-blue-500 text-white p-2 px-6 rounded w-fit"
-            >
-              Join Room
-            </button>
+      <div className="h-screen bg-gray-800 text-white flex items-center justify-center">
+        <div className="flex flex-col items-center border-2 p-4 rounded bg-gray-900">
+          <h1 className="text-2xl font-bold mb-4">Join a Room</h1>
+          <div className="p-2 flex items-center gap-2">
+            <label htmlFor="roomId">Room ID:</label>
+            <input
+              className="border border-gray-300 p-2 rounded"
+              type="text"
+              value={currentRoom}
+              onChange={(e) => setCurrentRoom(e.target.value)}
+              placeholder="Room ID"
+            />
           </div>
+          <div className="p-2 flex items-center gap-2">
+            <label htmlFor="username">Username:</label>
+            <input
+              className="border border-gray-300 p-2 rounded"
+              type="text"
+              value={currentUser}
+              onChange={(e) => setCurrentUser(e.target.value)}
+              placeholder="Username"
+            />
+          </div>
+          <button
+            className="bg-blue-500 text-white p-2 rounded mt-4"
+            onClick={() => HandleJoinRoom(currentRoom, currentUser)}
+          >
+            Join Room
+          </button>
         </div>
       </div>
-    )
+    );
   }
 
-  // User has joined
   return (
     <div className="h-screen w-screen overflow-hidden">
       <PanelGroup direction="horizontal">
-        <Panel defaultSize={20} minSize={15} maxSize={25} className={openSideBar ? "" : "hidden"}>
+        <Panel defaultSize={20} minSize={20} maxSize={25} className={openSideBar ? "" : "hidden"}>
           <AppSideBar
+            currentUser={currentUser}
             typing={typing}
             handleLanguageChange={handleLanguageChange}
             copyRoomId={copyRoomId}
             handleUserLeft={handleUserLeft}
             currentRoom={currentRoom}
-            currentUser={currentUser}
             language={language}
             setLanguage={setLanguage}
             users={users}
           />
         </Panel>
-        <PanelResizeHandle style={{ width: "5px", background: "#374151", cursor: "ew-resize" }} />
-        <Panel minSize={30} >
+        <PanelResizeHandle
+          style={{ width: "5px", background: "#374151", cursor: "ew-resize" }}
+        />
+        <Panel minSize={30}>
           <PanelGroup direction="vertical">
             <Panel defaultSize={70} minSize={30}>
-              <div className="p-4 bg-gray-900 text-white h-full">
-                {/* Editor header and top bar */}
+              <div className="p-4 bg-gray-900 text-white h-full flex flex-col rounded-lg">
                 <div className="flex justify-between items-center border-2 border-gray-700 p-2">
-                  <div className="flex items-center">
-                    <h2 className="text-xl font-bold">Code Editor</h2>
-                  </div>
+                  <h2 className="text-xl font-bold">CodeColab</h2>
                   <IoMenu
                     size={24}
                     className="cursor-pointer"
                     onClick={() => setOpenSideBar(!openSideBar)}
                   />
                 </div>
-                {/* Resizable code editor */}
-                <div className="p-4 mb-2 border-2 border-gray-700 h-[calc(100vh-20vh)]">
+                <div className="flex-1 border-2 border-gray-700 rounded mt-2">
                   <Editor
                     height="100%"
                     language={language}
@@ -207,19 +215,24 @@ function App() {
                 </div>
               </div>
             </Panel>
-            <PanelResizeHandle style={{ height: "5px", background: "#374151", cursor: "ns-resize" }} />
+            <PanelResizeHandle
+              style={{ height: "5px", background: "#374151", cursor: "ns-resize" }}
+            />
             <Panel minSize={10}>
-              {/* Output Area */}
-              <div className="p-4 bg-gray-900 border-2 border-gray-700 text-white h-full">
+              <div className="p-4 bg-gray-900 border-2 border-gray-700 rounded text-white h-full flex flex-col">
                 <button
                   onClick={handleRunCode}
-                  disabled={outputLoading}
-                  className={`p-2 mb-2 ${outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"} text-white`}
+                  disabled={isExecuting || outputLoading}
+                  className={`p-2 rounded mb-2 justify-start w-[200px] ${
+                    isExecuting || outputLoading
+                      ? "bg-gray-600 cursor-not-allowed"
+                      : "bg-green-700 hover:bg-green-800"
+                  } text-white`}
                 >
-                  {outputLoading ? "Running..." : "Execute"}
+                  {isExecuting || outputLoading ? "Running..." : "Execute"}
                 </button>
                 <textarea
-                  className="bg-gray-800 p-2 h-[80%] border-2 border-gray-700 w-full"
+                  className="bg-gray-800 p-2 rounded flex-1 border-2 border-gray-700 w-full resize-none"
                   placeholder="Output will appear here......"
                   value={output}
                   readOnly
