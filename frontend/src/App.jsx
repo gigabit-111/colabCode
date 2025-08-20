@@ -5,6 +5,7 @@ import { IoMenu } from "react-icons/io5";
 import Editor from '@monaco-editor/react';
 import { useEffect } from 'react';
 const socket = io("http://localhost:5000");
+import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 function App() {
   const [joined, setJoined] = useState(false);
@@ -157,69 +158,77 @@ function App() {
 
   // User has joined
   return (
-    <div className="flex relative">
-      {/* Sidebar w/ animation */}
-      <div
-        className={`
-          fixed top-0 left-0 h-screen bg-gray-800 text-white p-4 overflow-auto
-          transition-transform duration-300 ease-in-out
-          ${openSideBar ? 'translate-x-0 ' : '-translate-x-full w-0'}
-        `}
-        style={{ zIndex: 50 }}
-      >
-        <AppSideBar typing={typing} handleLanguageChange={handleLanguageChange} copyRoomId={copyRoomId} handleUserLeft={handleUserLeft} currentRoom={currentRoom} currentUser={currentUser} language={language} setLanguage={setLanguage} users={users} />
-      </div>
-
-      {/* Optional: overlay */}
-      {openSideBar && (
-        <div
-          className="fixed inset-0 backdrop-blur-sm bg-transparent transition-opacity duration-500 pointer-events-auto"
-          onClick={() => setOpenSideBar(false)}
-          style={{ zIndex: 40 }}
-        />
-      )}
-
-
-      {/* Editor area */}
-      <div className="flex-1 p-4 w-screen bg-gray-900 text-white border-gray-700">
-        <div className="flex justify-between items-center border-2 border-gray-700 p-2 h-[6vh]">
-          <div className="flex items-center justify-center h-full">
-            <h2 className="text-xl font-bold">Code Editor</h2>
-          </div>
-          <IoMenu
-            size={24}
-            className="cursor-pointer"
-            onClick={() => setOpenSideBar(!openSideBar)}
-          />
-        </div>
-        <div className='p-4 mt-2 mb-2 border-2 border-gray-700 rounded h-[calc(100vh-48vh)]'>
-          <Editor
-            height={"100%"}
+    <div className="h-screen w-screen overflow-hidden">
+      <PanelGroup direction="horizontal">
+        <Panel defaultSize={20} minSize={15} maxSize={25} className={openSideBar ? "" : "hidden"}>
+          <AppSideBar
+            typing={typing}
+            handleLanguageChange={handleLanguageChange}
+            copyRoomId={copyRoomId}
+            handleUserLeft={handleUserLeft}
+            currentRoom={currentRoom}
+            currentUser={currentUser}
             language={language}
-            value={code}
-            onChange={(newCode) => handleEditorChange(newCode)}
-            theme='vs-dark'
-            options={{
-              minimap: { enabled: false },
-              fontSize: 16,
-              lineHeight: 22,
-
-            }}
-            className='border-2 rounded border-gray-700 p-4 bg-[#1e1e1e]'
+            setLanguage={setLanguage}
+            users={users}
           />
-        </div>
-        <div className='p-4 h-[calc(100vh-48vh)] overflow-hidden border-2 border-gray-700 rounded text-white'>
-          <button
-            onClick={handleRunCode}
-            disabled={outputLoading}
-            className={`p-2 rounded mb-2 ${outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"} text-white`}
-          >
-            {outputLoading ? "Running..." : "Execute"}
-          </button>
-
-          <textarea className="bg-gray-800 p-2 rounded h-[90%] border-2 border-gray-700 w-full" placeholder="Output will appear here......" value={output} readOnly />
-        </div>
-      </div>
+        </Panel>
+        <PanelResizeHandle style={{ width: "5px", background: "#374151", cursor: "ew-resize" }} />
+        <Panel minSize={30} >
+          <PanelGroup direction="vertical">
+            <Panel defaultSize={70} minSize={30}>
+              <div className="p-4 bg-gray-900 text-white h-full">
+                {/* Editor header and top bar */}
+                <div className="flex justify-between items-center border-2 border-gray-700 p-2">
+                  <div className="flex items-center">
+                    <h2 className="text-xl font-bold">Code Editor</h2>
+                  </div>
+                  <IoMenu
+                    size={24}
+                    className="cursor-pointer"
+                    onClick={() => setOpenSideBar(!openSideBar)}
+                  />
+                </div>
+                {/* Resizable code editor */}
+                <div className="p-4 mb-2 border-2 border-gray-700 h-[calc(100vh-20vh)]">
+                  <Editor
+                    height="100%"
+                    language={language}
+                    value={code}
+                    onChange={handleEditorChange}
+                    theme="vs-dark"
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 16,
+                      lineHeight: 22,
+                    }}
+                    className="border-2 border-gray-700 p-4 bg-[#1e1e1e]"
+                  />
+                </div>
+              </div>
+            </Panel>
+            <PanelResizeHandle style={{ height: "5px", background: "#374151", cursor: "ns-resize" }} />
+            <Panel minSize={10}>
+              {/* Output Area */}
+              <div className="p-4 bg-gray-900 border-2 border-gray-700 text-white h-full">
+                <button
+                  onClick={handleRunCode}
+                  disabled={outputLoading}
+                  className={`p-2 mb-2 ${outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"} text-white`}
+                >
+                  {outputLoading ? "Running..." : "Execute"}
+                </button>
+                <textarea
+                  className="bg-gray-800 p-2 h-[80%] border-2 border-gray-700 w-full"
+                  placeholder="Output will appear here......"
+                  value={output}
+                  readOnly
+                />
+              </div>
+            </Panel>
+          </PanelGroup>
+        </Panel>
+      </PanelGroup>
     </div>
   );
 }
