@@ -1,20 +1,16 @@
 import express from 'express';
 import http from 'http';
-import {
-  Server
-} from 'socket.io';
+import { Server } from 'socket.io';
 import axios from 'axios';
+
 const app = express();
-
 const server = http.createServer(app);
-
 const io = new Server(server, {
-  cors: {
-    origin: '*',
-  },
+  cors: { origin: '*' },
 });
 
-const rooms = new Map();
+const rooms = new Map(); // roomId => Set of usernames
+const executingRooms = new Set(); // roomId set to track execution lock
 
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
@@ -22,15 +18,11 @@ io.on("connection", (socket) => {
   let currentRoom = null;
   let currentUser = null;
 
-  socket.on("join", ({
-    roomId,
-    username
-  }) => {
+  socket.on("join", ({ roomId, username }) => {
     if (currentRoom) {
       socket.leave(currentRoom);
-      rooms.get(currentRoom).delete(currentUser);
-      io.to(currentRoom).emit("userLeft", Array.from(rooms.get(currentRoom)));
-      // console.log(`User ${socket.id} left room ${currentRoom}`);
+      rooms.get(currentRoom)?.delete(currentUser);
+      io.to(currentRoom).emit("userLeft", Array.from(rooms.get(currentRoom) || []));
     }
 
     currentRoom = roomId;
@@ -42,81 +34,77 @@ io.on("connection", (socket) => {
     }
     rooms.get(roomId).add(username);
 
-    io.to(roomId).emit("userJoined", Array.from(rooms.get(currentRoom)));
+    io.to(roomId).emit("userJoined", Array.from(rooms.get(roomId)));
     console.log(`User ${username} joined room ${roomId}`);
   });
 
   socket.on("leaveRoom", () => {
     if (currentRoom && currentUser) {
-      // socket.leave(currentRoom);
-      rooms.get(currentRoom).delete(currentUser);
-      io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom)));
-
+      rooms.get(currentRoom)?.delete(currentUser);
+      io.to(currentRoom).emit("userLeft", Array.from(rooms.get(currentRoom) || []));
       socket.leave(currentRoom);
+      console.log(`User ${currentUser} left room ${currentRoom}`);
       currentRoom = null;
       currentUser = null;
-      console.log(`User ${socket.id} left room ${currentRoom}`);
     }
   });
 
-  socket.on("userTyping", ({
-    roomId,
-    username
-  }) => {
+  socket.on("userTyping", ({ roomId, username }) => {
     socket.to(roomId).emit("userTyping", username);
   });
 
-  socket.on("compilecode",async({code,roomId,language,version}) => {
-    if(rooms.has(roomId)) {
-      const room = rooms.get(roomId);
+  socket.on("compilecode", async ({ code, roomId, language, version }) => {
+    if (executingRooms.has(roomId)) {
+      socket.emit("codeexecutionBusy", { message: 'Code execution in progress, please wait.' });
+      return;
+    }
+
+    executingRooms.add(roomId);
+    io.to(roomId).emit("codeexecutionStarted");
+
+    if (!rooms.has(roomId)) {
+      socket.emit("coderesponse", { run: { output: "Error: Room does not exist." } });
+      executingRooms.delete(roomId);
+      io.to(roomId).emit("codeexecutionEnded");
+      return;
+    }
+
+    try {
       const response = await axios.post("https://emkc.org/api/v2/piston/execute", {
         language,
         version,
-        files:[
-          {
-            content: code,
-          }
-        ]
+        files: [{ content: code }],
       });
 
-      room.output = response.data.run.output;
+      rooms.get(roomId).output = response.data.run.output;
       io.to(roomId).emit("coderesponse", response.data);
+    } catch (error) {
+      io.to(roomId).emit("coderesponse", { run: { output: "Error executing code." } });
+    } finally {
+      executingRooms.delete(roomId);
+      io.to(roomId).emit("codeexecutionEnded");
     }
   });
 
-  socket.on("languageChange", ({
-    roomId,
-    language
-  }) => {
+  socket.on("languageChange", ({ roomId, language }) => {
     io.to(roomId).emit("languageUpdate", language);
   });
 
-  socket.on("codeChange", ({
-    roomId,
-    code
-  }) => {
+  socket.on("codeChange", ({ roomId, code }) => {
     socket.to(roomId).emit("codeUpdate", code);
   });
 
   socket.on("disconnect", () => {
     console.log("User disconnected", socket.id);
     if (currentRoom && currentUser) {
-      //socket.leave(currentRoom);
-      rooms.get(currentRoom).delete(currentUser);
-      io.to(currentRoom).emit("userLeft", Array.from(rooms.get(currentRoom)));
-      console.log(`User ${socket.id} left room ${currentRoom}`);
+      rooms.get(currentRoom)?.delete(currentUser);
+      io.to(currentRoom).emit("userLeft", Array.from(rooms.get(currentRoom) || []));
+      console.log(`User ${currentUser} disconnected and left room ${currentRoom}`);
     }
   });
-
-
 });
 
 const port = process.env.PORT || 5000;
-
-// app.get('/', (req, res) => {
-//  res.send('Hello, World!');
-// })
-
 server.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  console.log(`Server running on port ${port}`);
 });
