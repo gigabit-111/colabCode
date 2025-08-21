@@ -1,4 +1,3 @@
-import React from 'react';
 
 function AppSideBar({
   currentUser,
@@ -39,8 +38,11 @@ function AppSideBar({
       </div>
 
       <div className="mb-2">
-        <span className="font-semibold">Typing:</span> {typing && (typing === 'Me' ? 'Me is typing...' : `${typing} is typing...`)}
+        <span className="font-semibold">Typing:</span>{' '}
+        {console.log(typing)}
+        {typing ? (typing === currentUser ? 'You are typing...' : `${typing} is typing...`) : null}
       </div>
+
 
       <div className="mb-4">
         <p>Select Language:</p>

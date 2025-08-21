@@ -11,7 +11,7 @@ function App() {
   const [joined, setJoined] = useState(false);
   const [currentRoom, setCurrentRoom] = useState('');
   const [currentUser, setCurrentUser] = useState('');
-  const [openSideBar, setOpenSideBar] = useState(true);
+  const [openSideBar, setOpenSideBar] = useState(false);
   const [language, setLanguage] = useState('javascript');
   const [code, setCode] = useState('');
   const [users, setUsers] = useState([]);
@@ -27,6 +27,10 @@ function App() {
       setUsers(userList);
     });
 
+    socket.on("userLeft", (userList) => {
+      setUsers(userList);
+    });
+
     socket.on("codeUpdate", (newCode) => {
       setCode(newCode);
     });
@@ -36,7 +40,6 @@ function App() {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
         setTyping('');
-        typingTimeoutRef.current = null;
       }, 2000);
     });
 
@@ -44,49 +47,53 @@ function App() {
       setLanguage(newLanguage);
     });
 
-    socket.on("coderesponse", (response) => {
+    socket.on("codeResponse", (response) => {
       setOutput(response.run.output);
       setOutputLoading(false);
       setIsExecuting(false);
     });
 
-    socket.on("codeexecutionStarted", () => {
+    socket.on("codeExecutionStarted", () => {
       setIsExecuting(true);
     });
 
-    socket.on("codeexecutionEnded", () => {
+    socket.on("codeExecutionEnded", () => {
       setIsExecuting(false);
       setOutputLoading(false);
     });
 
-    socket.on("codeexecutionBusy", ({ message }) => {
+    socket.on("codeExecutionBusy", ({ message }) => {
       alert(message);
       setOutputLoading(false);
       setIsExecuting(false);
     });
 
+    socket.on("codeOutput", (latestOutput) => {
+      setOutput(latestOutput);
+    });
+
     return () => {
       socket.off("userJoined");
+      socket.off("userLeft");
       socket.off("codeUpdate");
       socket.off("userTyping");
       socket.off("languageUpdate");
-      socket.off("coderesponse");
-      socket.off("codeexecutionStarted");
-      socket.off("codeexecutionEnded");
-      socket.off("codeexecutionBusy");
+      socket.off("codeResponse");
+      socket.off("codeExecutionStarted");
+      socket.off("codeExecutionEnded");
+      socket.off("codeExecutionBusy");
+      socket.off("codeOutput");
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, [currentUser]);
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      socket.emit("leaveRoom", { roomId: currentRoom, username: currentUser });
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [currentRoom, currentUser]);
+    const savedRoom = localStorage.getItem('currentRoom');
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedRoom && savedUser) {
+      HandleJoinRoom(savedRoom, savedUser);
+    }
+  }, []);
 
   const HandleJoinRoom = (roomId, username) => {
     if (roomId && username) {
@@ -94,6 +101,8 @@ function App() {
       setCurrentRoom(roomId);
       setCurrentUser(username);
       setJoined(true);
+      localStorage.setItem('currentRoom', roomId);
+      localStorage.setItem('currentUser', username);
     }
   };
 
@@ -102,9 +111,10 @@ function App() {
     socket.emit("codeChange", { roomId: currentRoom, code: newCode });
     socket.emit("userTyping", { roomId: currentRoom, username: currentUser });
   };
-
   const handleUserLeft = () => {
-    socket.emit("leaveRoom", { roomId: currentRoom, username: currentUser });
+    socket.emit("leaveRoom");
+    localStorage.removeItem('currentRoom');
+    localStorage.removeItem('currentUser');
     setJoined(false);
     setCurrentRoom('');
     setCurrentUser('');
@@ -113,7 +123,6 @@ function App() {
     setUsers([]);
     setOutput('');
   };
-
   const copyRoomId = () => {
     navigator.clipboard.writeText(currentRoom);
   };
@@ -121,13 +130,14 @@ function App() {
   const handleLanguageChange = (e) => {
     const newLanguage = e.target.value;
     setLanguage(newLanguage);
+    setOutput(''); // clear output on language change
     socket.emit("languageChange", { roomId: currentRoom, language: newLanguage });
   };
 
   const handleRunCode = () => {
     if (!isExecuting) {
       setOutputLoading(true);
-      socket.emit("compilecode", { code, roomId: currentRoom, language, version });
+      socket.emit("compileCode", { code, roomId: currentRoom, language, version });
     }
   };
 
@@ -223,11 +233,10 @@ function App() {
                 <button
                   onClick={handleRunCode}
                   disabled={isExecuting || outputLoading}
-                  className={`p-2 rounded mb-2 justify-start w-[200px] ${
-                    isExecuting || outputLoading
-                      ? "bg-gray-600 cursor-not-allowed"
-                      : "bg-green-700 hover:bg-green-800"
-                  } text-white`}
+                  className={`p-2 rounded mb-2 justify-start w-[200px] ${isExecuting || outputLoading
+                    ? "bg-gray-600 cursor-not-allowed"
+                    : "bg-green-700 hover:bg-green-800"
+                    } text-white`}
                 >
                   {isExecuting || outputLoading ? "Running..." : "Execute"}
                 </button>
