@@ -1,10 +1,9 @@
 import express from 'express';
 import http from 'http';
-import {
-  Server
-} from 'socket.io';
+import { Server } from 'socket.io';
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config();
 
@@ -12,12 +11,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*'
+    origin: '*',
   },
 });
 
 const rooms = new Map(); // roomId => { users: Set, code: string, language: string, output: string }
-const executingRooms = new Set(); // roomId set to track execution lock
+const executingRooms = new Set();
 
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
@@ -25,15 +24,22 @@ io.on("connection", (socket) => {
   let currentRoom = null;
   let currentUser = null;
 
-  socket.on("join", ({
-    roomId,
-    username
-  }) => {
+  socket.on("createRoom", () => {
+    const newRoomId = uuidv4();
+    rooms.set(newRoomId, {
+      users: new Set(),
+      code: "",
+      language: "javascript",
+      output: ""
+    });
+    socket.emit("roomCreated", newRoomId);
+  });
+
+  socket.on("join", ({ roomId, username }) => {
     if (currentRoom) {
       socket.leave(currentRoom);
       rooms.get(currentRoom)?.users.delete(currentUser);
       io.to(currentRoom).emit("userLeft", Array.from(rooms.get(currentRoom)?.users || []));
-      // Clean up room if empty
       if (rooms.get(currentRoom)?.users.size === 0) {
         rooms.delete(currentRoom);
       }
@@ -54,9 +60,7 @@ io.on("connection", (socket) => {
     const room = rooms.get(roomId);
     room.users.add(username);
 
-    // Send current code to the joining user for sync
     socket.emit("codeUpdate", room.code);
-    // Optionally send current language and output as well
     socket.emit("languageUpdate", room.language);
     socket.emit("codeOutput", room.output);
 
@@ -68,7 +72,6 @@ io.on("connection", (socket) => {
     if (currentRoom && currentUser) {
       rooms.get(currentRoom)?.users.delete(currentUser);
       io.to(currentRoom).emit("userLeft", Array.from(rooms.get(currentRoom)?.users || []));
-      // Clean up room if empty
       if (rooms.get(currentRoom)?.users.size === 0) {
         rooms.delete(currentRoom);
       }
@@ -79,17 +82,11 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("userTyping", ({
-    roomId,
-    username
-  }) => {
+  socket.on("userTyping", ({ roomId, username }) => {
     socket.to(roomId).emit("userTyping", username);
   });
 
-  socket.on("codeChange", ({
-    roomId,
-    code
-  }) => {
+  socket.on("codeChange", ({ roomId, code }) => {
     const room = rooms.get(roomId);
     if (room) {
       room.code = code;
@@ -97,10 +94,7 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("codeUpdate", code);
   });
 
-  socket.on("languageChange", ({
-    roomId,
-    language
-  }) => {
+  socket.on("languageChange", ({ roomId, language }) => {
     const room = rooms.get(roomId);
     if (room) {
       room.language = language;
@@ -108,17 +102,9 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("languageUpdate", language);
   });
 
-  socket.on("compileCode", async ({
-    code,
-    roomId,
-    language,
-    version,
-    input
-  }) => {
+  socket.on("compileCode", async ({ code, roomId, language, version, input }) => {
     if (executingRooms.has(roomId)) {
-      socket.emit("codeExecutionBusy", {
-        message: 'Code execution in progress, please wait.'
-      });
+      socket.emit("codeExecutionBusy", { message: 'Code execution in progress, please wait.' });
       return;
     }
 
@@ -126,11 +112,7 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("codeExecutionStarted");
 
     if (!rooms.has(roomId)) {
-      socket.emit("codeResponse", {
-        run: {
-          output: "Error: Room does not exist."
-        }
-      });
+      socket.emit("codeResponse", { run: { output: "Error: Room does not exist." } });
       executingRooms.delete(roomId);
       io.to(roomId).emit("codeExecutionEnded");
       return;
@@ -140,9 +122,7 @@ io.on("connection", (socket) => {
       const response = await axios.post("https://emkc.org/api/v2/piston/execute", {
         language,
         version,
-        files: [{
-          content: code
-        }],
+        files: [{ content: code }],
         stdin: input || "",
       });
 
@@ -152,11 +132,7 @@ io.on("connection", (socket) => {
       io.to(roomId).emit("codeResponse", response.data);
     } catch (error) {
       console.error("Code execution error:", error);
-      io.to(roomId).emit("codeResponse", {
-        run: {
-          output: "Error executing code."
-        }
-      });
+      io.to(roomId).emit("codeResponse", { run: { output: "Error executing code." } });
     } finally {
       executingRooms.delete(roomId);
       io.to(roomId).emit("codeExecutionEnded");
@@ -168,7 +144,6 @@ io.on("connection", (socket) => {
     if (currentRoom && currentUser) {
       rooms.get(currentRoom)?.users.delete(currentUser);
       io.to(currentRoom).emit("userLeft", Array.from(rooms.get(currentRoom)?.users || []));
-      // Clean up room if empty
       if (rooms.get(currentRoom)?.users.size === 0) {
         rooms.delete(currentRoom);
       }
