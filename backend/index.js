@@ -5,13 +5,16 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
 
+const FRONTEND_URL = process.env.FRONTEND_URL;
+const CODE_EXECUTION_URL = process.env.CODE_EXECUTION_URL;
+
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: FRONTEND_URL,
   },
 });
 
@@ -54,7 +57,7 @@ io.on("connection", (socket) => {
         users: new Set(),
         code: "",
         language: "javascript",
-        output: ""
+        output: "",
       });
     }
     const room = rooms.get(roomId);
@@ -119,7 +122,7 @@ io.on("connection", (socket) => {
     }
 
     try {
-      const response = await axios.post("https://emkc.org/api/v2/piston/execute", {
+      const response = await axios.post(`${CODE_EXECUTION_URL}`, {
         language,
         version,
         files: [{ content: code }],

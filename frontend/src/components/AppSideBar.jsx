@@ -45,8 +45,6 @@ function AppSideBar({
         {typing && (
           <span className="font-semibold">Typing: {typing}</span>
         )}
-        {/* {console.log(typing)} */}
-        {/* {typing ? (typing === currentUser ? 'You are typing...' : `${typing} is typing...`) : null} */}
       </div>
 
 

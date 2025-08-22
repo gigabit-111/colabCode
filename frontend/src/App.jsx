@@ -6,7 +6,8 @@ import Editor from "@monaco-editor/react"
 import AppSideBar from "./components/AppSideBar"
 import { IoMenu, IoClose } from "react-icons/io5"
 
-const socket = io("http://localhost:5000")
+const backendUrl = import.meta.env.VITE_FRONTEND_URL;
+const socket = io(backendUrl);
 
 function App() {
   const [mode, setMode] = useState("initial")
