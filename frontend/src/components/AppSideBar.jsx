@@ -12,17 +12,17 @@ function AppSideBar({
   const filteredUsers = users.filter((user) => user !== currentUser);
 
   return (
-    <div className="bg-gray-900 text-white p-4 flex flex-col h-full w-full overflow-y-auto rounded">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 border border-gray-600 rounded-lg bg-gray-900 p-4 shadow-md w-fit">
+    <div className="bg-gray-900 text-white p-4 flex flex-col h-full w-full overflow-hidden rounded">
+      <div className="flex flex-col gap-4 mb-4 border border-gray-600 rounded-lg bg-gray-900 p-4 shadow-md w-full">
         <p className="text-xl font-semibold text-white underline">Room Info:</p>
 
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-2">
+        <div className="flex flex-col max-sm:flex-row max-sm:justify-between max-sm:items-center gap-2">
           <p className="text-sm text-gray-300">Your ID: <span className="font-mono">{currentUser}</span></p>
           <button
             onClick={copyRoomId}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-200"
           >
-            Copy ID
+            Copy Room-ID
           </button>
         </div>
       </div>

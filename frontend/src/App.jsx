@@ -7,7 +7,10 @@ import AppSideBar from "./components/AppSideBar"
 import { IoMenu, IoClose } from "react-icons/io5"
 
 const backendUrl = import.meta.env.VITE_FRONTEND_URL;
-const socket = io(backendUrl);
+const socket = io(backendUrl, {
+  withCredentials: true,
+  transports: ["websocket"],
+});
 
 function App() {
   const [mode, setMode] = useState("initial")
@@ -26,6 +29,7 @@ function App() {
   const [isExecuting, setIsExecuting] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [showOutput, setShowOutput] = useState(false)
+  const [codeInput, setCodeInput] = useState("")
 
   useEffect(() => {
     const checkMobile = () => {
@@ -376,20 +380,26 @@ function App() {
               </div>
             ) : (
               <div className="h-full bg-gray-900 text-white flex flex-col p-4">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-lg font-semibold">Output</h3>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-lg font-semibold">Input</h3>
                   <button onClick={() => setShowOutput(false)} className="text-gray-400 hover:text-white">
                     <IoClose size={24} />
                   </button>
                 </div>
+                <textarea
+                  className="mb-3 bg-gray-800 p-3 rounded-lg flex-1 border border-gray-700 w-full resize-none text-sm"
+                  placeholder="write your code input here..."
+                  value={codeInput}
+                  onChange={(e) => setCodeInput(e.target.value)}
+                />
+                <h3 className="text-lg font-semibold mb-2">Output</h3>
                 <button
                   onClick={handleRunCode}
                   disabled={isExecuting || outputLoading}
-                  className={`p-3 rounded-lg mb-3 w-full ${
-                    isExecuting || outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
-                  } text-white font-medium transition-colors`}
+                  className={`p-3 rounded-lg mb-3 w-full ${isExecuting || outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
+                    } text-white font-medium transition-colors`}
                 >
-                  {isExecuting || outputLoading ? "Running..." : "Execute"}
+                  {isExecuting || outputLoading ? "Running..." : "Execute code"}
                 </button>
                 <textarea
                   className="bg-gray-800 p-3 rounded-lg flex-1 border border-gray-700 w-full resize-none text-sm"
@@ -476,18 +486,29 @@ function App() {
             <PanelResizeHandle style={{ height: "5px", background: "#374151", cursor: "ns-resize" }} />
             <Panel minSize={15} defaultSize={30}>
               <div className="p-3 md:p-4 bg-gray-900 text-white h-full flex flex-col">
-                <button
-                  onClick={handleRunCode}
-                  disabled={isExecuting || outputLoading}
-                  className={`p-2 md:p-3 rounded-lg mb-2 md:mb-3 w-full sm:w-auto sm:max-w-xs ${
-                    isExecuting || outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
-                  } text-white font-medium transition-colors`}
-                >
-                  {isExecuting || outputLoading ? "Running..." : "Execute"}
-                </button>
+                <h3 className="text-lg font-semibold mb-2">Input</h3>
                 <textarea
-                  className="bg-gray-800 p-2 md:p-3 rounded-lg flex-1 border-2 border-gray-700 w-full resize-none text-sm md:text-base"
-                  placeholder="Output will appear here......"
+                  className="mb-3 bg-gray-800 p-3 rounded-lg flex-1 border border-gray-700 w-full resize-none text-sm overflow-hidden"
+                  placeholder="Write your code input here..."
+                  value={codeInput}
+                  onChange={(e) => setCodeInput(e.target.value)}
+                />
+                <div className="flex flex-row justify-between items-center gap-3 w-full">
+                  <h3 className="text-lg font-semibold mb-2">Output: </h3>
+                  <button
+                    onClick={handleRunCode}
+                    disabled={isExecuting || outputLoading}
+                    className={`p-2 rounded-lg mb-2 w-32 ${isExecuting || outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
+                      } text-white font-medium transition-colors`}
+                  >
+                    {isExecuting || outputLoading ? "Running..." : "Execute code"}
+                  </button>
+
+                </div>
+
+                <textarea
+                  className="bg-gray-800 p-2 md:p-3 rounded-lg flex-1 border-2 border-gray-700 w-full resize-none text-sm md:text-base overflow-hidden"
+                  placeholder="Output will appear here..."
                   value={output}
                   readOnly
                 />
