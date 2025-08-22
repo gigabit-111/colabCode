@@ -35,7 +35,7 @@ function App() {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768)
       if (window.innerWidth >= 768) {
-        setShowOutput(false) // Reset output view on desktop
+        setShowOutput(false)
       }
     }
 
@@ -73,6 +73,10 @@ function App() {
       setOutput(response.run.output)
       setOutputLoading(false)
       setIsExecuting(false)
+    })
+
+    socket.on("codeInputUpdate", (newInput) => {
+      setCodeInput(newInput)
     })
 
     socket.on("codeExecutionStarted", () => {
@@ -114,6 +118,7 @@ function App() {
       socket.off("codeExecutionBusy")
       socket.off("codeOutput")
       socket.off("roomCreated")
+      socket.off("codeInputUpdate")
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     }
   }, [currentUser])
@@ -163,6 +168,12 @@ function App() {
     socket.emit("userTyping", { roomId: currentRoom, username: currentUser })
   }
 
+  const handleCodeInputChange = (e) => {
+    setCodeInput(e.target.value);
+    console.log("Code input changed:", e.target.value);
+    socket.emit("codeInputChange", { roomId: currentRoom, codeInput: e.target.value });
+  };
+
   const handleUserLeft = () => {
     socket.emit("leaveRoom")
     localStorage.removeItem("currentRoom")
@@ -190,7 +201,7 @@ function App() {
   const handleRunCode = () => {
     if (!isExecuting) {
       setOutputLoading(true)
-      socket.emit("compileCode", { code, roomId: currentRoom, language, version })
+      socket.emit("compileCode", { code, roomId: currentRoom, language, version , codeinput: codeInput })
       if (isMobile) {
         setShowOutput(true)
       }
@@ -390,7 +401,7 @@ function App() {
                   className="mb-3 bg-gray-800 p-3 rounded-lg flex-1 border border-gray-700 w-full resize-none text-sm"
                   placeholder="write your code input here..."
                   value={codeInput}
-                  onChange={(e) => setCodeInput(e.target.value)}
+                  onChange={handleCodeInputChange}
                 />
                 <h3 className="text-lg font-semibold mb-2">Output</h3>
                 <button
@@ -491,7 +502,7 @@ function App() {
                   className="mb-3 bg-gray-800 p-3 rounded-lg flex-1 border border-gray-700 w-full resize-none text-sm overflow-hidden"
                   placeholder="Write your code input here..."
                   value={codeInput}
-                  onChange={(e) => setCodeInput(e.target.value)}
+                  onChange={handleCodeInputChange}
                 />
                 <div className="flex flex-row justify-between items-center gap-3 w-full">
                   <h3 className="text-lg font-semibold mb-2">Output: </h3>

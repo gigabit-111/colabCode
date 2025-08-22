@@ -5,20 +5,21 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
 
+dotenv.config();
+
 const FRONTEND_URL = process.env.FRONTEND_URL;
 const CODE_EXECUTION_URL = process.env.CODE_EXECUTION_URL;
-
-dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: FRONTEND_URL,
+    credentials: true
   },
 });
 
-const rooms = new Map(); // roomId => { users: Set, code: string, language: string, output: string }
+const rooms = new Map();
 const executingRooms = new Set();
 
 io.on("connection", (socket) => {
@@ -33,7 +34,8 @@ io.on("connection", (socket) => {
       users: new Set(),
       code: "",
       language: "javascript",
-      output: ""
+      output: "",
+      input: ""
     });
     socket.emit("roomCreated", newRoomId);
   });
@@ -58,11 +60,13 @@ io.on("connection", (socket) => {
         code: "",
         language: "javascript",
         output: "",
+        input: ""
       });
     }
     const room = rooms.get(roomId);
     room.users.add(username);
 
+    socket.emit("codeInputUpdate", room.input);
     socket.emit("codeUpdate", room.code);
     socket.emit("languageUpdate", room.language);
     socket.emit("codeOutput", room.output);
@@ -97,6 +101,14 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("codeUpdate", code);
   });
 
+  socket.on("codeInputChange", ({ roomId, codeInput }) => {
+    const room = rooms.get(roomId);
+    if (room) {
+      room.input = codeInput;
+      io.to(roomId).emit("codeInputUpdate", codeInput);
+    }
+  });
+
   socket.on("languageChange", ({ roomId, language }) => {
     const room = rooms.get(roomId);
     if (room) {
@@ -105,7 +117,7 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("languageUpdate", language);
   });
 
-  socket.on("compileCode", async ({ code, roomId, language, version, input }) => {
+  socket.on("compileCode", async ({ code, roomId, language, version, codeinput }) => {
     if (executingRooms.has(roomId)) {
       socket.emit("codeExecutionBusy", { message: 'Code execution in progress, please wait.' });
       return;
@@ -122,11 +134,13 @@ io.on("connection", (socket) => {
     }
 
     try {
-      const response = await axios.post(`${CODE_EXECUTION_URL}`, {
+      // console.log("code execute", code);
+      // console.log("input", codeinput);
+      const response = await axios.post(CODE_EXECUTION_URL, {
         language,
         version,
         files: [{ content: code }],
-        stdin: input || "",
+        stdin: codeinput,
       });
 
       const room = rooms.get(roomId);
