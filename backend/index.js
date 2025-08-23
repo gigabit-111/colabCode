@@ -9,8 +9,20 @@ dotenv.config();
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
 const CODE_EXECUTION_URL = process.env.CODE_EXECUTION_URL;
-
+const interval = 30000;
 const app = express();
+//onrender deploy hack
+function reloadWebSite(){
+  axios.get(FRONTEND_URL)
+  .then((response) => {
+    console.log("Frontend reloaded");
+  })
+  .catch((error) => {
+    console.error("Error reloading frontend:", error);
+  });
+}
+
+setInterval(reloadWebSite, interval);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
