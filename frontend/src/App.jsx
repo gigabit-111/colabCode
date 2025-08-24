@@ -6,10 +6,10 @@ import Editor from "@monaco-editor/react"
 import AppSideBar from "./components/AppSideBar"
 import { IoMenu, IoClose } from "react-icons/io5"
 
-const backendUrl = import.meta.env.VITE_FRONTEND_URL;
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
 const socket = io(backendUrl, {
   withCredentials: true,
-  transports: ["websocket"],
+  transports: ["polling", "websocket"],
 });
 
 function App() {
@@ -201,7 +201,7 @@ function App() {
   const handleRunCode = () => {
     if (!isExecuting) {
       setOutputLoading(true)
-      socket.emit("compileCode", { code, roomId: currentRoom, language, version , codeinput: codeInput })
+      socket.emit("compileCode", { code, roomId: currentRoom, language, version, codeinput: codeInput })
       if (isMobile) {
         setShowOutput(true)
       }
@@ -213,7 +213,7 @@ function App() {
       return (
         <div className="min-h-screen bg-gray-800 text-white flex flex-col items-center justify-center px-4 py-8">
           <div className="max-w-xl text-center mb-8 md:mb-10">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold mb-4">Welcome to CodeColab</h1>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold mb-4">Welcome to ColabCode</h1>
             <p className="text-gray-300 text-base md:text-lg leading-relaxed">
               Collaborate on code in real-time with your friends or team. Create rooms instantly or join an existing
               session to write, run, and share code seamlessly.
@@ -331,7 +331,7 @@ function App() {
 
   if (isMobile) {
     return (
-      <div className="h-screen w-screen overflow-hidden bg-gray-900 relative">
+      <div className="h-screen flex flex-col w-screen overflow-hidden">
         {/* Mobile Sidebar Overlay */}
         {openSideBar && (
           <div className="absolute inset-0 z-50 flex">
@@ -356,7 +356,7 @@ function App() {
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="flex justify-between items-center bg-gray-900 border-b border-gray-700 p-3">
-            <h2 className="text-lg md:text-xl font-bold text-white">CodeColab</h2>
+            <h2 className="text-lg md:text-xl font-bold text-white">ColabCode</h2>
             <div className="flex items-center gap-2">
               {!showOutput && (
                 <button
@@ -426,7 +426,7 @@ function App() {
         {/* Footer */}
         <div className="bg-gray-900 border-t border-gray-700 p-2">
           <p className="text-center text-xs text-gray-400">
-            © 2025 CodeColab. Developed by{" "}
+            © 2025 ColabCode. Developed by{" "}
             <a
               href="https://www.linkedin.com/in/anuja-mishra-1193a2245"
               className="text-blue-400 hover:underline"
@@ -442,7 +442,7 @@ function App() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden">
+    <div className="h-screen flex flex-col w-screen overflow-hidden">
       <PanelGroup direction="horizontal">
         <Panel
           defaultSize={openSideBar ? 25 : 0}
@@ -466,15 +466,17 @@ function App() {
         <Panel minSize={30}>
           <PanelGroup direction="vertical">
             <Panel defaultSize={70} minSize={30}>
+              {/* header */}
               <div className="p-3 md:p-4 bg-gray-900 text-white h-full flex flex-col rounded-lg">
                 <div className="flex justify-between items-center border-2 border-gray-700 p-2 md:p-3 rounded">
-                  <h2 className="text-lg md:text-xl font-bold">CodeColab</h2>
+                  <h2 className="text-lg md:text-xl font-bold">ColabCode</h2>
                   <IoMenu
                     size={24}
                     className="cursor-pointer hover:text-gray-300 transition-colors"
                     onClick={() => setOpenSideBar(!openSideBar)}
                   />
                 </div>
+                {/* Editor */}
                 <div className="flex-1 border-2 border-gray-700 rounded mt-2">
                   <Editor
                     height="100%"
@@ -495,7 +497,7 @@ function App() {
               </div>
             </Panel>
             <PanelResizeHandle style={{ height: "5px", background: "#374151", cursor: "ns-resize" }} />
-            <Panel minSize={15} defaultSize={30}>
+            <Panel minSize={20} defaultSize={30}>
               <div className="p-3 md:p-4 bg-gray-900 text-white h-full flex flex-col">
                 <h3 className="text-lg font-semibold mb-2">Input</h3>
                 <textarea
@@ -528,23 +530,20 @@ function App() {
           </PanelGroup>
         </Panel>
       </PanelGroup>
-
       {/* Footer */}
-      <footer className="w-full border-t border-gray-700 bg-gray-900">
-        <div className="p-2 md:p-4 text-white flex items-center justify-center">
-          <p className="text-center text-xs md:text-sm text-gray-400">
-            © 2025 CodeColab. All rights reserved. Developed by{" "}
-            <a
-              href="https://www.linkedin.com/in/anuja-mishra-1193a2245"
-              className="text-blue-400 hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Anuja Mishra
-            </a>
-          </p>
-        </div>
-      </footer>
+      <div className="bg-gray-900 border-t border-gray-700 p-2">
+        <p className="text-center text-xs text-gray-400">
+          © 2025 ColabCode. All rights reserved. Developed by{" "}
+          <a
+            href="https://www.linkedin.com/in/anuja-mishra-1193a2245"
+            className="text-blue-400 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Anuja Mishra
+          </a>
+        </p>
+      </div>
     </div>
   )
 }
