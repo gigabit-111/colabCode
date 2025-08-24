@@ -4,13 +4,18 @@ import { Server } from 'socket.io';
 import axios from 'axios';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
-
+import cors from 'cors';
 dotenv.config();
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
 const CODE_EXECUTION_URL = process.env.CODE_EXECUTION_URL;
 const interval = 30000;
 const app = express();
+app.use(cors(
+  {
+    origin: FRONTEND_URL,
+  }
+))
 //onrender deploy hack
 function reloadWebSite(){
   axios.get(FRONTEND_URL)
