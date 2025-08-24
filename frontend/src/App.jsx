@@ -5,7 +5,7 @@ import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels"
 import Editor from "@monaco-editor/react"
 import AppSideBar from "./components/AppSideBar"
 import { IoMenu, IoClose } from "react-icons/io5"
-
+import toast from "react-hot-toast"
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 const socket = io(backendUrl, {
   withCredentials: true,
@@ -188,6 +188,7 @@ function App() {
   }
 
   const copyRoomId = () => {
+    toast.success("Room ID copied to clipboard")
     navigator.clipboard.writeText(currentRoom)
   }
 
@@ -532,7 +533,7 @@ function App() {
       </PanelGroup>
       {/* Footer */}
       <div className="bg-gray-900 border-t border-gray-700 p-2">
-        <p className="text-center text-xs text-gray-400">
+        <p className="text-center text-l text-gray-400">
           © 2025 ColabCode. All rights reserved. Developed by{" "}
           <a
             href="https://www.linkedin.com/in/anuja-mishra-1193a2245"

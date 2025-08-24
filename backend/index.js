@@ -1,9 +1,13 @@
 import express from 'express';
 import http from 'http';
-import { Server } from 'socket.io';
+import {
+  Server
+} from 'socket.io';
 import axios from 'axios';
 import dotenv from 'dotenv';
-import { v4 as uuidv4 } from 'uuid';
+import {
+  v4 as uuidv4
+} from 'uuid';
 import cors from 'cors';
 dotenv.config();
 
@@ -11,20 +15,19 @@ const FRONTEND_URL = process.env.FRONTEND_URL;
 const CODE_EXECUTION_URL = process.env.CODE_EXECUTION_URL;
 const interval = 30000;
 const app = express();
-app.use(cors(
-  {
-    origin: FRONTEND_URL,
-  }
-))
+app.use(cors({
+  origin: FRONTEND_URL,
+  // orgin: '*'
+}))
 //onrender deploy hack
-function reloadWebSite(){
+function reloadWebSite() {
   axios.get(FRONTEND_URL)
-  .then((response) => {
-    console.log("Frontend reloaded");
-  })
-  .catch((error) => {
-    console.error("Error reloading frontend:", error);
-  });
+    .then((response) => {
+      console.log("Frontend reloaded");
+    })
+    .catch((error) => {
+      console.error("Error reloading frontend:", error);
+    });
 }
 
 setInterval(reloadWebSite, interval);
@@ -57,7 +60,10 @@ io.on("connection", (socket) => {
     socket.emit("roomCreated", newRoomId);
   });
 
-  socket.on("join", ({ roomId, username }) => {
+  socket.on("join", ({
+    roomId,
+    username
+  }) => {
     if (currentRoom) {
       socket.leave(currentRoom);
       rooms.get(currentRoom)?.users.delete(currentUser);
@@ -106,11 +112,17 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("userTyping", ({ roomId, username }) => {
+  socket.on("userTyping", ({
+    roomId,
+    username
+  }) => {
     socket.to(roomId).emit("userTyping", username);
   });
 
-  socket.on("codeChange", ({ roomId, code }) => {
+  socket.on("codeChange", ({
+    roomId,
+    code
+  }) => {
     const room = rooms.get(roomId);
     if (room) {
       room.code = code;
@@ -118,7 +130,10 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("codeUpdate", code);
   });
 
-  socket.on("codeInputChange", ({ roomId, codeInput }) => {
+  socket.on("codeInputChange", ({
+    roomId,
+    codeInput
+  }) => {
     const room = rooms.get(roomId);
     if (room) {
       room.input = codeInput;
@@ -126,7 +141,10 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("languageChange", ({ roomId, language }) => {
+  socket.on("languageChange", ({
+    roomId,
+    language
+  }) => {
     const room = rooms.get(roomId);
     if (room) {
       room.language = language;
@@ -134,9 +152,17 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("languageUpdate", language);
   });
 
-  socket.on("compileCode", async ({ code, roomId, language, version, codeinput }) => {
+  socket.on("compileCode", async ({
+    code,
+    roomId,
+    language,
+    version,
+    codeinput
+  }) => {
     if (executingRooms.has(roomId)) {
-      socket.emit("codeExecutionBusy", { message: 'Code execution in progress, please wait.' });
+      socket.emit("codeExecutionBusy", {
+        message: 'Code execution in progress, please wait.'
+      });
       return;
     }
 
@@ -144,7 +170,11 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("codeExecutionStarted");
 
     if (!rooms.has(roomId)) {
-      socket.emit("codeResponse", { run: { output: "Error: Room does not exist." } });
+      socket.emit("codeResponse", {
+        run: {
+          output: "Error: Room does not exist."
+        }
+      });
       executingRooms.delete(roomId);
       io.to(roomId).emit("codeExecutionEnded");
       return;
@@ -156,7 +186,9 @@ io.on("connection", (socket) => {
       const response = await axios.post(CODE_EXECUTION_URL, {
         language,
         version,
-        files: [{ content: code }],
+        files: [{
+          content: code
+        }],
         stdin: codeinput,
       });
 
@@ -166,7 +198,11 @@ io.on("connection", (socket) => {
       io.to(roomId).emit("codeResponse", response.data);
     } catch (error) {
       console.error("Code execution error:", error);
-      io.to(roomId).emit("codeResponse", { run: { output: "Error executing code." } });
+      io.to(roomId).emit("codeResponse", {
+        run: {
+          output: "Error executing code."
+        }
+      });
     } finally {
       executingRooms.delete(roomId);
       io.to(roomId).emit("codeExecutionEnded");
