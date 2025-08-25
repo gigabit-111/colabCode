@@ -31,7 +31,7 @@ Users can create or join rooms, collaboratively update code, share inputs, execu
 - **Real-time collaborative editing** with live synchronization of code among all participants.
 - **Language support** including JavaScript, Python, Java, C++ (configurable).
 - **Typing indicators** show who is typing in the room.
-- **Code execution** using external API (e.g., Piston), supporting code input (stdin) and output.
+- **Code execution** using REC (Remote Code Execution).
 - **User presence indication** to see list of active users.
 - **Responsive UI** with sidebar toggle (including shortcut Ctrl+B).
 - **Input sharing and live updates** across collaborators.
@@ -49,7 +49,7 @@ Users can create or join rooms, collaboratively update code, share inputs, execu
 - Socket.IO (real-time communication)
 - Axios (HTTP client)
 - UUID (for unique room IDs)
-- Piston API (remote code execution)
+- REC (remote code execution)
 - Environment variables with dotenv  
 - Deployment on Render.com
 
@@ -74,7 +74,7 @@ Users can create or join rooms, collaboratively update code, share inputs, execu
    - Events include joining/leaving rooms, code and input changes, language switching, typing notifications.
 3. **Code Execution**  
    - Users send code + input to backend.
-   - Backend calls external code execution service (Piston).
+   - Backend calls external code execution service (REC).
    - Outputs are broadcasted back to all users in the room.
 4. **Frontend UI**  
    - Responsive and user-friendly interface.
@@ -161,7 +161,7 @@ npm run dev
 | Variable Name       | Description                                     | Example                           |
 |---------------------|------------------------------------------------|---------------------------------|
 | FRONTEND_URL        | Full URL of frontend app for CORS in backend    | `https://your-frontend.com`     |
-| CODE_EXECUTION_URL  | URL of external code execution API (Piston)     | `https://emkc.org/api/v2/piston/execute` |
+| CODE_EXECUTION_URL  | URL of external code execution API (Piston)     | `https://your-rec-url` |
 | PORT                | Port on which backend listens                    | `5000`                         |
 | VITE_BACKEND_URL    | Backend URL for frontend socket connection       | `https://your-backend.com`      |
 
