@@ -222,6 +222,16 @@ io.on("connection", (socket) => {
   });
 });
 
+app.get("/user-exit", (req, res) => {
+  const { username, roomId } = req.query; // <-- use req.query
+  let exists = false;
+  if (rooms.has(roomId)) {
+    exists = rooms.get(roomId).users.has(username);
+  }
+  res.json({ exists }); 
+});
+
+
 const port = process.env.PORT || 5000;
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
