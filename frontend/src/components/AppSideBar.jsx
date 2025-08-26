@@ -1,4 +1,5 @@
-
+import UserListComponent from "./UserListComponent";
+import toast from "react-hot-toast";
 function AppSideBar({
   currentUser,
   language,
@@ -10,6 +11,9 @@ function AppSideBar({
 }) {
   // Filter out current user from users list
   const filteredUsers = users.filter((user) => user !== currentUser);
+  const handleFullNameView = (user) => {
+    toast(`Full name: ${user}`);
+  };
 
   return (
     <div className="bg-gray-900 text-white p-4 flex flex-col h-full w-full overflow-hidden rounded">
@@ -31,13 +35,13 @@ function AppSideBar({
         <span className="font-semibold">Users:</span>
         {
           filteredUsers.length === 0? (<p className="text-gray-400 flex items-center justify-center h-[80%] overflow-hidden">No other users</p>):(
-            <ul className="list-disc list-inside gap-1">
+            <div className="mt-2 w-full flex gap-3">
               {filteredUsers.length > 0 ? (
-                filteredUsers.map((user, i) => <li key={i}>{user}</li>)
+                filteredUsers.map((user, i) => <UserListComponent key={i} index={i} user={user} handleFullNameView={handleFullNameView} />)
               ) : (
                 <></>
               )}
-            </ul>
+            </div>
           )}
       </div>
 
