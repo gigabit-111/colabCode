@@ -6,6 +6,7 @@ import Editor from "@monaco-editor/react"
 import AppSideBar from "./components/AppSideBar"
 import { IoMenu, IoClose } from "react-icons/io5"
 import toast from "react-hot-toast"
+import axios from "axios"
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 const socket = io(backendUrl, {
   withCredentials: true,
@@ -147,16 +148,30 @@ function App() {
     }
   }, [])
 
-  const HandleJoinRoom = (roomId, username) => {
-    if (roomId && username) {
-      socket.emit("join", { roomId, username })
-      setCurrentRoom(roomId)
-      setCurrentUser(username)
-      setJoined(true)
-      localStorage.setItem("currentRoom", roomId)
-      localStorage.setItem("currentUser", username)
+  const HandleJoinRoom = async (roomId, username) => {
+    if (username === '') return;
+    try {
+      const res = await axios.get(`${backendUrl}/user-exit`, {
+        params: { username, roomId },
+      });
+      if (res.data.exists) { // Replace with actual property from your API
+        toast.error("Username already taken in this room. Please choose another one.");
+      } else {
+        if (roomId && username) {
+          socket.emit("join", { roomId, username });
+          setCurrentRoom(roomId);
+          setCurrentUser(username);
+          setJoined(true);
+          localStorage.setItem("currentRoom", roomId);
+          localStorage.setItem("currentUser", username);
+        }
+      }
+    } catch (err) {
+      console.log(err);
+      toast.error("An error occurred while checking username.");
     }
-  }
+  };
+
 
   const createRoom = () => {
     socket.emit("createRoom")
