@@ -8,6 +8,7 @@ function AppSideBar({
   copyRoomId,
   typing,
   handleLanguageChange,
+  currentRoom
 }) {
   // Filter out current user from users list
   const filteredUsers = users.filter((user) => user !== currentUser);
@@ -23,7 +24,7 @@ function AppSideBar({
         <div className="flex flex-col max-sm:flex-row max-sm:justify-between max-sm:items-center gap-2">
           <p className="text-sm text-gray-300">Your ID: <span className="font-mono">{currentUser}</span></p>
           <button
-            onClick={copyRoomId}
+            onClick={() => copyRoomId(currentRoom)}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-200"
           >
             Copy Room-ID
@@ -58,6 +59,7 @@ function AppSideBar({
           value={language}
           onChange={handleLanguageChange}
           className="text-white bg-gray-800 p-2 rounded w-full"
+          name="language"
         >
           <option value="javascript">JavaScript</option>
           <option value="python">Python</option>

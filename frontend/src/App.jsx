@@ -7,6 +7,11 @@ import AppSideBar from "./components/AppSideBar"
 import { IoMenu, IoClose } from "react-icons/io5"
 import toast from "react-hot-toast"
 import axios from "axios"
+import Mobile from "./pages/Mobile"
+import Desktop from "./pages/Desktop"
+import Initial from "./components/InitialComponent"
+import JoinComponent from "./components/JoinComponent"
+import CreateComponent from "./components/createComponent"
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 const socket = io(backendUrl, {
   withCredentials: true,
@@ -14,6 +19,7 @@ const socket = io(backendUrl, {
 });
 
 function App() {
+  // const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState("initial")
   const [joined, setJoined] = useState(false)
   const [currentRoom, setCurrentRoom] = useState("")
@@ -202,10 +208,21 @@ function App() {
     setOutput("")
   }
 
-  const copyRoomId = () => {
-    toast.success("Room ID copied to clipboard")
-    navigator.clipboard.writeText(currentRoom)
-  }
+  const copyRoomId = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // only show toast after success
+      toast.success(`Room ID copied: ${text}`);
+    } catch (err) {
+      if (err.name === "AbortError" || err.message.includes("Canceled")) {
+        console.warn("Clipboard write canceled");
+      } else {
+        console.error("Clipboard error:", err);
+        toast.error("Failed to copy Room ID");
+      }
+    }
+  };
+
 
   const handleLanguageChange = (e) => {
     const newLanguage = e.target.value
@@ -226,341 +243,88 @@ function App() {
 
   if (!joined) {
     if (mode === "initial") {
-      return (
-        <div className="min-h-screen bg-gray-800 text-white flex flex-col items-center justify-center px-4 py-8">
-          <div className="max-w-xl text-center mb-8 md:mb-10">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold mb-4">Welcome to ColabCode</h1>
-            <p className="text-gray-300 text-base md:text-lg leading-relaxed">
-              Collaborate on code in real-time with your friends or team. Create rooms instantly or join an existing
-              session to write, run, and share code seamlessly.
-            </p>
-          </div>
-
-          <div className="flex flex-col items-center border-2 border-gray-600 p-4 md:p-6 rounded-lg bg-gray-900 max-w-sm md:max-w-md w-full gap-4 md:gap-6">
-            <h2 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">Get Started</h2>
-            <div className="flex flex-col sm:flex-row gap-3 md:gap-4 w-full">
-              <button
-                onClick={() => setMode("join")}
-                className="bg-blue-500 text-white p-3 md:p-3 rounded-lg flex-grow hover:bg-blue-600 transition-colors font-medium"
-              >
-                Join Room
-              </button>
-              <button
-                onClick={() => setMode("create")}
-                className="bg-green-600 text-white p-3 md:p-3 rounded-lg flex-grow hover:bg-green-700 transition-colors font-medium"
-              >
-                Create Room
-              </button>
-            </div>
-          </div>
-        </div>
-      )
+      return <Initial setMode={setMode} />
     }
 
     if (mode === "join") {
       return (
-        <div className="min-h-screen bg-gray-800 text-white flex items-center justify-center px-4 py-8">
-          <div className="flex flex-col items-center border-2 border-gray-600 p-4 md:p-6 rounded-lg bg-gray-900 max-w-sm md:max-w-md w-full gap-4">
-            <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">Join a Room</h1>
-            <div className="w-full flex flex-col gap-3">
-              <label htmlFor="username" className="block mb-1 text-sm md:text-base font-medium">
-                Username:
-              </label>
-              <input
-                id="username"
-                className="border border-gray-300 p-3 md:p-2 rounded-lg w-full text-white text-base"
-                type="text"
-                value={currentUser}
-                onChange={(e) => setCurrentUser(e.target.value)}
-                placeholder="Enter your username"
-              />
-              <label htmlFor="roomId" className="block mb-1 text-sm md:text-base font-medium">
-                Room ID:
-              </label>
-              <input
-                id="roomId"
-                className="border border-gray-300 p-3 md:p-2 rounded-lg w-full text-white text-base"
-                type="text"
-                value={currentRoom}
-                onChange={(e) => setCurrentRoom(e.target.value)}
-                placeholder="Enter Room ID"
-              />
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2 w-full mt-4">
-              <button
-                onClick={() => HandleJoinRoom(currentRoom, currentUser)}
-                className="bg-blue-500 text-white p-3 md:p-2 rounded-lg flex-grow hover:bg-blue-600 transition-colors font-medium disabled:bg-gray-600 disabled:cursor-not-allowed"
-                disabled={!currentUser || !currentRoom}
-              >
-                Join Room
-              </button>
-              <button
-                onClick={() => setMode("initial")}
-                className="bg-gray-600 text-white p-3 md:p-2 rounded-lg flex-grow hover:bg-gray-700 transition-colors font-medium"
-              >
-                Back
-              </button>
-            </div>
-          </div>
-        </div>
+        <JoinComponent
+          currentUser={currentUser}
+          setCurrentUser={setCurrentUser}
+          currentRoom={currentRoom}
+          setCurrentRoom={setCurrentRoom}
+          HandleJoinRoom={HandleJoinRoom}
+          setMode={setMode}
+        />
       )
     }
 
     if (mode === "create") {
       return (
-        <div className="min-h-screen bg-gray-800 text-white flex items-center justify-center px-4 py-8">
-          <div className="flex flex-col items-center border-2 border-gray-600 p-4 md:p-6 rounded-lg bg-gray-900 max-w-sm md:max-w-md w-full gap-4">
-            <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">Create a Room</h1>
-            <div className="w-full flex flex-col gap-3">
-              <label htmlFor="username" className="block mb-1 text-sm md:text-base font-medium">
-                Username:
-              </label>
-              <input
-                id="username"
-                className="border border-gray-300 p-3 md:p-2 rounded-lg w-full text-white text-base"
-                type="text"
-                value={currentUser}
-                onChange={(e) => setCurrentUser(e.target.value)}
-                placeholder="Enter your username"
-              />
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2 w-full mt-4">
-              <button
-                onClick={createRoom}
-                className="bg-green-600 text-white p-3 md:p-2 rounded-lg flex-grow hover:bg-green-700 transition-colors font-medium disabled:bg-gray-600 disabled:cursor-not-allowed"
-                disabled={!currentUser}
-              >
-                Create Room
-              </button>
-              <button
-                onClick={() => setMode("initial")}
-                className="bg-gray-600 text-white p-3 md:p-2 rounded-lg flex-grow hover:bg-gray-700 transition-colors font-medium"
-              >
-                Back
-              </button>
-            </div>
-          </div>
-        </div>
+        <CreateComponent
+          currentUser={currentUser}
+          setCurrentUser={setCurrentUser}
+          createRoom={createRoom}
+          setMode={setMode}
+        />
       )
     }
   }
 
   if (isMobile) {
     return (
-      <div className="h-screen flex flex-col w-screen overflow-hidden">
-        {/* Mobile Sidebar Overlay */}
-        {openSideBar && (
-          <div className="absolute inset-0 z-50 flex">
-            <div className="w-80 max-w-[85vw] bg-gray-900 border-r border-gray-700">
-              <AppSideBar
-                currentUser={currentUser}
-                typing={typing}
-                handleLanguageChange={handleLanguageChange}
-                copyRoomId={copyRoomId}
-                handleUserLeft={handleUserLeft}
-                currentRoom={currentRoom}
-                language={language}
-                setLanguage={setLanguage}
-                users={users}
-              />
-            </div>
-            <div className="flex-1 bg-black bg-opacity-50" onClick={() => setOpenSideBar(false)} />
-          </div>
-        )}
-
-        {/* Main Content */}
-        <div className="h-full flex flex-col">
-          {/* Header */}
-          <div className="flex justify-between items-center bg-gray-900 border-b border-gray-700 p-3">
-            <h2 className="text-lg md:text-xl font-bold text-white">ColabCode</h2>
-            <div className="flex items-center gap-2">
-              {!showOutput && (
-                <button
-                  onClick={() => setShowOutput(true)}
-                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
-                >
-                  Output
-                </button>
-              )}
-              <IoMenu size={24} className="cursor-pointer text-white" onClick={() => setOpenSideBar(!openSideBar)} />
-            </div>
-          </div>
-
-          {/* Editor or Output */}
-          <div className="flex-1 relative">
-            {!showOutput ? (
-              <div className="h-full bg-gray-900 text-white">
-                <Editor
-                  className=""
-                  height="100%"
-                  language={language}
-                  value={code}
-                  onChange={handleEditorChange}
-                  theme="vs-dark"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    lineHeight: 20,
-                    scrollBeyondLastLine: false,
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="h-full bg-gray-900 text-white flex flex-col p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-lg font-semibold">Input</h3>
-                  <button onClick={() => setShowOutput(false)} className="text-gray-400 hover:text-white">
-                    <IoClose size={24} />
-                  </button>
-                </div>
-                <textarea
-                  className="mb-3 bg-gray-800 p-3 rounded-lg flex-1 border border-gray-700 w-full resize-none text-sm"
-                  placeholder="write your code input here..."
-                  value={codeInput}
-                  onChange={handleCodeInputChange}
-                />
-                <h3 className="text-lg font-semibold mb-2">Output</h3>
-                <button
-                  onClick={handleRunCode}
-                  disabled={isExecuting || outputLoading}
-                  className={`p-3 rounded-lg mb-3 w-full ${isExecuting || outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
-                    } text-white font-medium transition-colors`}
-                >
-                  {isExecuting || outputLoading ? "Running..." : "Execute code"}
-                </button>
-                <textarea
-                  className="bg-gray-800 p-3 rounded-lg flex-1 border border-gray-700 w-full resize-none text-sm"
-                  placeholder="Output will appear here......"
-                  value={output}
-                  readOnly
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="bg-gray-900 border-t border-gray-700 p-2">
-          <p className="text-center text-xs text-gray-400">
-            © 2025 ColabCode. Developed by{" "}
-            <a
-              href="https://www.linkedin.com/in/anuja-mishra-1193a2245"
-              className="text-blue-400 hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Anuja Mishra
-            </a>
-          </p>
-        </div>
-      </div>
+      <Mobile
+        openSideBar={openSideBar}
+        setOpenSideBar={setOpenSideBar}
+        currentUser={currentUser}
+        typing={typing}
+        handleLanguageChange={handleLanguageChange}
+        copyRoomId={copyRoomId}
+        handleUserLeft={handleUserLeft}
+        currentRoom={currentRoom}
+        language={language}
+        setLanguage={setLanguage}
+        code={code}
+        handleEditorChange={handleEditorChange}
+        showOutput={showOutput}
+        setShowOutput={setShowOutput}
+        users={users}
+        codeInput={codeInput}
+        handleCodeInputChange={handleCodeInputChange}
+        handleRunCode={handleRunCode}
+        isExecuting={isExecuting}
+        outputLoading={outputLoading}
+        output={output}
+      />
     )
   }
 
+  // Desktop View
   return (
-    <div className="h-screen flex flex-col w-screen overflow-hidden">
-      <PanelGroup direction="horizontal">
-        <Panel
-          defaultSize={openSideBar ? 25 : 0}
-          minSize={openSideBar ? 20 : 0}
-          maxSize={35}
-          className={openSideBar ? "" : "hidden"}
-        >
-          <AppSideBar
-            currentUser={currentUser}
-            typing={typing}
-            handleLanguageChange={handleLanguageChange}
-            copyRoomId={copyRoomId}
-            handleUserLeft={handleUserLeft}
-            currentRoom={currentRoom}
-            language={language}
-            setLanguage={setLanguage}
-            users={users}
-          />
-        </Panel>
-        {openSideBar && <PanelResizeHandle style={{ width: "5px", background: "#374151", cursor: "ew-resize" }} />}
-        <Panel minSize={30}>
-          <PanelGroup direction="vertical">
-            <Panel defaultSize={70} minSize={30}>
-              {/* header */}
-              <div className="p-3 md:p-4 bg-gray-900 text-white h-full flex flex-col rounded-lg">
-                <div className="flex justify-between items-center border-2 border-gray-700 p-2 md:p-3 rounded">
-                  <h2 className="text-lg md:text-xl font-bold">ColabCode</h2>
-                  <IoMenu
-                    size={24}
-                    className="cursor-pointer hover:text-gray-300 transition-colors"
-                    onClick={() => setOpenSideBar(!openSideBar)}
-                  />
-                </div>
-                {/* Editor */}
-                <div className="flex-1 border-2 border-gray-700 rounded mt-2">
-                  <Editor
-                    height="100%"
-                    language={language}
-                    value={code}
-                    onChange={handleEditorChange}
-                    theme="vs-dark"
-                    options={{
-                      minimap: { enabled: window.innerWidth > 1024 },
-                      fontSize: window.innerWidth > 768 ? 16 : 14,
-                      lineHeight: window.innerWidth > 768 ? 22 : 20,
-                      automaticLayout: true,
-                      scrollBeyondLastLine: false,
-                    }}
-                    className="border-2 border-gray-700 bg-[#1e1e1e]"
-                  />
-                </div>
-              </div>
-            </Panel>
-            <PanelResizeHandle style={{ height: "5px", background: "#374151", cursor: "ns-resize" }} />
-            <Panel minSize={20} defaultSize={30}>
-              <div className="p-3 md:p-4 bg-gray-900 text-white h-full flex flex-col">
-                <h3 className="text-lg font-semibold mb-2">Input</h3>
-                <textarea
-                  className="mb-3 bg-gray-800 p-3 rounded-lg flex-1 border border-gray-700 w-full resize-none text-sm overflow-hidden"
-                  placeholder="Write your code input here..."
-                  value={codeInput}
-                  onChange={handleCodeInputChange}
-                />
-                <div className="flex flex-row justify-between items-center gap-3 w-full">
-                  <h3 className="text-lg font-semibold mb-2">Output: </h3>
-                  <button
-                    onClick={handleRunCode}
-                    disabled={isExecuting || outputLoading}
-                    className={`p-2 rounded-lg mb-2 w-32 ${isExecuting || outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
-                      } text-white font-medium transition-colors`}
-                  >
-                    {isExecuting || outputLoading ? "Running..." : "Execute code"}
-                  </button>
+    <Desktop
+      openSideBar={openSideBar}
+      setOpenSideBar={setOpenSideBar}
+      currentUser={currentUser}
+      typing={typing}
+      handleLanguageChange={handleLanguageChange}
+      copyRoomId={copyRoomId}
+      handleUserLeft={handleUserLeft}
+      users={users}
+      currentRoom={currentRoom}
+      language={language}
+      setLanguage={setLanguage}
+      code={code}
+      handleEditorChange={handleEditorChange}
+      // showOutput={showOutput}
+      // setShowOutput={setShowOutput}
+      codeInput={codeInput}
+      handleCodeInputChange={handleCodeInputChange}
+      output={output}
+      handleRunCode={handleRunCode}
+      isExecuting={isExecuting}
+      outputLoading={outputLoading}
+    />
 
-                </div>
-
-                <textarea
-                  className="bg-gray-800 p-2 md:p-3 rounded-lg flex-1 border-2 border-gray-700 w-full resize-none text-sm md:text-base overflow-hidden"
-                  placeholder="Output will appear here..."
-                  value={output}
-                  readOnly
-                />
-              </div>
-            </Panel>
-          </PanelGroup>
-        </Panel>
-      </PanelGroup>
-      {/* Footer */}
-      <div className="bg-gray-900 border-t border-gray-700 p-2">
-        <p className="text-center text-l text-gray-400">
-          © 2025 ColabCode. All rights reserved. Developed by{" "}
-          <a
-            href="https://www.linkedin.com/in/anuja-mishra-1193a2245"
-            className="text-blue-400 hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Anuja Mishra
-          </a>
-        </p>
-      </div>
-    </div>
   )
 }
 
