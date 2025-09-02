@@ -1,7 +1,8 @@
 import React from "react"
 import { IoMenu, IoClose } from "react-icons/io5"
 import Editor from "@monaco-editor/react"
-import AppSideBar from "../components/AppSideBar" // adjust path as needed
+import AppSideBar from "../components/AppSideBar/AppSideBar" // adjust path as needed
+import MonacoEditor from "../components/Editor/MonacoEditor"
 
 function Mobile({
   openSideBar,
@@ -79,19 +80,10 @@ function Mobile({
         <div className="flex-1 relative">
           {!showOutput ? (
             <div className="h-full bg-gray-900 text-white">
-              <Editor
-              name="code"
-                height="100%"
+              <MonacoEditor
                 language={language}
                 value={code}
                 onChange={handleEditorChange}
-                theme="vs-dark"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  lineHeight: 20,
-                  scrollBeyondLastLine: false,
-                }}
               />
             </div>
           ) : (

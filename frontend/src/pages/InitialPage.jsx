@@ -1,4 +1,4 @@
-function Initial({ setMode }) {
+function InitialPage({ setMode }) {
     return (
         <div className="min-h-screen bg-gray-800 text-white flex flex-col items-center justify-center px-4 py-8">
             <div className="max-w-xl text-center mb-8 md:mb-10">
@@ -30,4 +30,4 @@ function Initial({ setMode }) {
     )
 }
 
-export default Initial
+export default InitialPage

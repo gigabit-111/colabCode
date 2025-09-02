@@ -1,4 +1,4 @@
-import UserListComponent from "./UserListComponent";
+import UserListComponent from "./UserList";
 import toast from "react-hot-toast";
 function AppSideBar({
   currentUser,

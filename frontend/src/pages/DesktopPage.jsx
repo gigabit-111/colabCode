@@ -1,8 +1,9 @@
 
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels"
 import Editor from "@monaco-editor/react"
-import AppSideBar from "../components/AppSideBar"
+import AppSideBar from "../components/AppSideBar/AppSideBar"
 import { IoMenu, IoClose } from "react-icons/io5"
+import MonacoEditor from "../components/Editor/MonacoEditor"
 
 
 function Desktop({ openSideBar, setOpenSideBar, currentUser, typing, handleLanguageChange, copyRoomId, handleUserLeft, users, currentRoom, language, setLanguage, code, handleEditorChange, codeInput, handleCodeInputChange, output, handleRunCode, isExecuting, outputLoading }) {
@@ -44,21 +45,10 @@ function Desktop({ openSideBar, setOpenSideBar, currentUser, typing, handleLangu
                 </div>
                 {/* Editor */}
                 <div className="flex-1 border-2 border-gray-700 rounded mt-2">
-                  <Editor
-                    name="code"
-                    height="100%"
+                  <MonacoEditor
                     language={language}
                     value={code}
                     onChange={handleEditorChange}
-                    theme="vs-dark"
-                    options={{
-                      minimap: { enabled: window.innerWidth > 1024 },
-                      fontSize: window.innerWidth > 768 ? 16 : 14,
-                      lineHeight: window.innerWidth > 768 ? 22 : 20,
-                      automaticLayout: true,
-                      scrollBeyondLastLine: false,
-                    }}
-                    className="border-2 border-gray-700 bg-[#1e1e1e]"
                   />
                 </div>
               </div>
