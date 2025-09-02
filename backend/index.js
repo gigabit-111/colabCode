@@ -231,6 +231,50 @@ app.get("/user-exit", (req, res) => {
   res.json({ exists }); 
 });
 
+app.get("/room-exists", (req, res) => {
+  const { roomId } = req.query
+  const exists = rooms.has(roomId)
+  res.json({ exists })
+})
+
+// Check if username exists in room (rename your existing endpoint)
+app.get("/user-exists", (req, res) => {
+  const { username, roomId } = req.query
+  let exists = false
+  
+  if (rooms.has(roomId)) {
+    exists = rooms.get(roomId).users.has(username)
+  }
+  
+  res.json({ exists })
+})
+
+// Optional: Get room info (users count, language, etc.)
+app.get("/room-info", (req, res) => {
+  const { roomId } = req.query
+  
+  if (!rooms.has(roomId)) {
+    return res.status(404).json({ error: "Room not found" })
+  }
+  
+  const room = rooms.get(roomId)
+  res.json({
+    roomId,
+    userCount: room.users.size,
+    language: room.language,
+    users: Array.from(room.users)
+  })
+})
+
+// Optional: Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: "OK", 
+    activeRooms: rooms.size,
+    timestamp: new Date().toISOString()
+  })
+})
+
 
 const port = process.env.PORT || 5000;
 server.listen(port, () => {
