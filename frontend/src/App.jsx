@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect } from "react"
 import io from "socket.io-client"
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels"
@@ -7,6 +6,7 @@ import AppSideBar from "./components/AppSideBar"
 import { IoMenu, IoClose } from "react-icons/io5"
 import toast from "react-hot-toast"
 import axios from "axios"
+
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 const socket = io(backendUrl, {
   withCredentials: true,
@@ -32,6 +32,18 @@ function App() {
   const [showOutput, setShowOutput] = useState(false)
   const [codeInput, setCodeInput] = useState("")
 
+  // Loading states for create/join room and custom loading messages
+  const [creatingRoom, setCreatingRoom] = useState(false)
+  const [joiningRoom, setJoiningRoom] = useState(false)
+  const [loadingStepIndex, setLoadingStepIndex] = useState(0)
+  const [loadingMessage, setLoadingMessage] = useState("")
+  const loadingSteps = [
+    "Finding space to create room...",
+    "Configuring room...",
+    "Almost ready..."
+  ]
+  const loadingIntervalRef = useRef(null)
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768)
@@ -39,7 +51,6 @@ function App() {
         setShowOutput(false)
       }
     }
-
     checkMobile()
     window.addEventListener("resize", checkMobile)
     return () => window.removeEventListener("resize", checkMobile)
@@ -99,13 +110,18 @@ function App() {
       setOutput(latestOutput)
     })
 
-    socket.on("roomCreated", (newRoomId) => {
+    // roomCreated event listener with loading management
+    const onRoomCreated = (newRoomId) => {
+      clearInterval(loadingIntervalRef.current)
+      setLoadingMessage("Room created!")
+      setCreatingRoom(false)
       if (currentUser) {
         HandleJoinRoom(newRoomId, currentUser)
       } else {
         alert("Please enter a username before creating a room")
       }
-    })
+    }
+    socket.on("roomCreated", onRoomCreated)
 
     return () => {
       socket.off("userJoined")
@@ -118,9 +134,10 @@ function App() {
       socket.off("codeExecutionEnded")
       socket.off("codeExecutionBusy")
       socket.off("codeOutput")
-      socket.off("roomCreated")
+      socket.off("roomCreated", onRoomCreated)
       socket.off("codeInputUpdate")
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      clearInterval(loadingIntervalRef.current)
     }
   }, [currentUser])
 
@@ -140,9 +157,7 @@ function App() {
         setOpenSideBar((prev) => !prev)
       }
     }
-
     window.addEventListener("keydown", onKeyDown)
-
     return () => {
       window.removeEventListener("keydown", onKeyDown)
     }
@@ -150,11 +165,12 @@ function App() {
 
   const HandleJoinRoom = async (roomId, username) => {
     if (username === '') return;
+    setJoiningRoom(true)
     try {
       const res = await axios.get(`${backendUrl}/user-exit`, {
         params: { username, roomId },
       });
-      if (res.data.exists) { // Replace with actual property from your API
+      if (res.data.exists) {
         toast.error("Username already taken in this room. Please choose another one.");
       } else {
         if (roomId && username) {
@@ -169,11 +185,28 @@ function App() {
     } catch (err) {
       console.log(err);
       toast.error("An error occurred while checking username.");
+    } finally {
+      setJoiningRoom(false)
     }
   };
 
-
+  // Modified createRoom with multi-step loading messages
   const createRoom = () => {
+    if (!currentUser) return;
+
+    setCreatingRoom(true)
+    setLoadingStepIndex(0)
+    setLoadingMessage(loadingSteps[0])
+
+    let step = 1
+    loadingIntervalRef.current = setInterval(() => {
+      if (step < loadingSteps.length) {
+        setLoadingStepIndex(step)
+        setLoadingMessage(loadingSteps[step])
+        step++
+      }
+    }, 2000)
+
     socket.emit("createRoom")
   }
 
@@ -185,7 +218,6 @@ function App() {
 
   const handleCodeInputChange = (e) => {
     setCodeInput(e.target.value);
-    console.log("Code input changed:", e.target.value);
     socket.emit("codeInputChange", { roomId: currentRoom, codeInput: e.target.value });
   };
 
@@ -289,11 +321,14 @@ function App() {
             <div className="flex flex-col sm:flex-row gap-2 w-full mt-4">
               <button
                 onClick={() => HandleJoinRoom(currentRoom, currentUser)}
-                className="bg-blue-500 text-white p-3 md:p-2 rounded-lg flex-grow hover:bg-blue-600 transition-colors font-medium disabled:bg-gray-600 disabled:cursor-not-allowed"
-                disabled={!currentUser || !currentRoom}
+                className={`bg-blue-500 text-white p-3 md:p-2 rounded-lg flex-grow hover:bg-blue-600 transition-colors font-medium disabled:bg-gray-600 disabled:cursor-not-allowed ${
+                  joiningRoom ? "animate-pulse" : ""
+                }`}
+                disabled={!currentUser || !currentRoom || joiningRoom}
               >
-                Join Room
+                {joiningRoom ? "Joining..." : "Join Room"}
               </button>
+
               <button
                 onClick={() => setMode("initial")}
                 className="bg-gray-600 text-white p-3 md:p-2 rounded-lg flex-grow hover:bg-gray-700 transition-colors font-medium"
@@ -327,11 +362,14 @@ function App() {
             <div className="flex flex-col sm:flex-row gap-2 w-full mt-4">
               <button
                 onClick={createRoom}
-                className="bg-green-600 text-white p-3 md:p-2 rounded-lg flex-grow hover:bg-green-700 transition-colors font-medium disabled:bg-gray-600 disabled:cursor-not-allowed"
-                disabled={!currentUser}
+                className={`bg-green-600 text-white p-3 md:p-2 rounded-lg flex-grow hover:bg-green-700 transition-colors font-medium disabled:bg-gray-600 disabled:cursor-not-allowed ${
+                  creatingRoom ? "animate-pulse" : ""
+                }`}
+                disabled={!currentUser || creatingRoom}
               >
-                Create Room
+                {creatingRoom ? loadingMessage : "Create Room"}
               </button>
+
               <button
                 onClick={() => setMode("initial")}
                 className="bg-gray-600 text-white p-3 md:p-2 rounded-lg flex-grow hover:bg-gray-700 transition-colors font-medium"
@@ -423,8 +461,9 @@ function App() {
                 <button
                   onClick={handleRunCode}
                   disabled={isExecuting || outputLoading}
-                  className={`p-3 rounded-lg mb-3 w-full ${isExecuting || outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
-                    } text-white font-medium transition-colors`}
+                  className={`p-3 rounded-lg mb-3 w-full ${
+                    isExecuting || outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
+                  } text-white font-medium transition-colors`}
                 >
                   {isExecuting || outputLoading ? "Running..." : "Execute code"}
                 </button>
@@ -527,12 +566,12 @@ function App() {
                   <button
                     onClick={handleRunCode}
                     disabled={isExecuting || outputLoading}
-                    className={`p-2 rounded-lg mb-2 w-32 ${isExecuting || outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
-                      } text-white font-medium transition-colors`}
+                    className={`p-2 rounded-lg mb-2 w-32 ${
+                      isExecuting || outputLoading ? "bg-gray-600 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
+                    } text-white font-medium transition-colors`}
                   >
                     {isExecuting || outputLoading ? "Running..." : "Execute code"}
                   </button>
-
                 </div>
 
                 <textarea
