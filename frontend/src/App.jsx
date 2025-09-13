@@ -205,7 +205,7 @@ function App() {
         setLoadingMessage(loadingSteps[step])
         step++
       }
-    }, 2000)
+    }, 3000)
 
     socket.emit("createRoom")
   }
