@@ -171,7 +171,7 @@ npm run dev
 
 - On loading the app, choose to **Create a Room** or **Join a Room**.
 - Provide a unique username.
-- If joining, paste a valid room ID.
+- If joining, paste a valid room ID or open a link that looks like `https://yourfrontend.com/room/ROOMID` (app will navigate to `/room/<roomId>`).
 - Use Monaco Editor to write or edit code collaboratively.
 - Optionally write stdin input in the input box.
 - Select programming language.
