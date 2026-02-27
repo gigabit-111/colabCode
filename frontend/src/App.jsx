@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import InitialPage from './pages/InitialPage';
 import JoinPage from './pages/JoinPage';
 import CreatePage from './pages/CreatePage';
@@ -10,7 +10,9 @@ function App() {
       <Route path="/" element={<InitialPage />} />
       <Route path="/join" element={<JoinPage />} />
       <Route path="/create" element={<CreatePage />} />
-      <Route path="/editor" element={<EditorPage />} />
+      {/* use a standard path with a route parameter */}
+      <Route path="/room/:roomId" element={<EditorPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
