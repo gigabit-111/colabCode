@@ -11,16 +11,31 @@ import {
 import cors from 'cors';
 dotenv.config();
 
-const FRONTEND_URL = process.env.FRONTEND_URL;
+// normalize frontend URL to ensure it has a protocol and no trailing slash
+let FRONTEND_URL = process.env.FRONTEND_URL || "";
+if (FRONTEND_URL) {
+  if (!/^https?:\/\//i.test(FRONTEND_URL)) {
+    // default to http for local development
+    FRONTEND_URL = `http://${FRONTEND_URL}`;
+  }
+  // remove trailing slash, as CORS origin must exactly match
+  FRONTEND_URL = FRONTEND_URL.replace(/\/$/, "");
+}
 const CODE_EXECUTION_URL = process.env.CODE_EXECUTION_URL;
 const interval = 30000;
 const app = express();
+app.use(express.json({ limit: "1mb" }));
+
+// If FRONTEND_URL isn't configured, allow all origins (dev-friendly).
+const corsOrigin = FRONTEND_URL || true;
 app.use(cors({
-  origin: FRONTEND_URL,
-  // orgin: '*'
-}))
-//onrender deploy hack
+  origin: corsOrigin,
+  credentials: Boolean(FRONTEND_URL),
+}));
+
+// onrender deploy hack
 function reloadWebSite() {
+  if (!FRONTEND_URL) return;
   axios.get(FRONTEND_URL)
     .then((response) => {
       console.log("Frontend reloaded");
@@ -30,17 +45,21 @@ function reloadWebSite() {
     });
 }
 
-setInterval(reloadWebSite, interval);
+if (FRONTEND_URL) {
+  setInterval(reloadWebSite, interval);
+}
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: FRONTEND_URL,
-    credentials: true
+    origin: corsOrigin,
+    credentials: Boolean(FRONTEND_URL),
   },
 });
 
 const rooms = new Map();
 const executingRooms = new Set();
+
+console.log("rooms", rooms);
 
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
@@ -64,6 +83,14 @@ io.on("connection", (socket) => {
     roomId,
     username
   }) => {
+    // if we're already in the same room with the same name, ignore the duplicate call
+    if (currentRoom === roomId && currentUser === username) {
+      // nothing to do, but return success state
+      console.log(`User ${username} re-joined room ${roomId} (duplicate event)`);
+      return;
+    }
+
+    // leave previous room if any
     if (currentRoom) {
       socket.leave(currentRoom);
       rooms.get(currentRoom)?.users.delete(currentUser);
@@ -73,10 +100,7 @@ io.on("connection", (socket) => {
       }
     }
 
-    currentRoom = roomId;
-    currentUser = username;
-    socket.join(roomId);
-
+    // ensure the target room exists
     if (!rooms.has(roomId)) {
       rooms.set(roomId, {
         users: new Set(),
@@ -87,6 +111,19 @@ io.on("connection", (socket) => {
       });
     }
     const room = rooms.get(roomId);
+
+    // reject if another user already has this name
+    if (room.users.has(username)) {
+      socket.emit("joinError", {
+        message: "Username already in use in this room. Please choose a different name."
+      });
+      return;
+    }
+
+    currentRoom = roomId;
+    currentUser = username;
+    socket.join(roomId);
+
     room.users.add(username);
 
     socket.emit("codeInputUpdate", room.input);
@@ -276,7 +313,7 @@ app.get("/health", (req, res) => {
 })
 
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 8080;
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
