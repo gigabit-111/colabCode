@@ -210,10 +210,5 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Credits
 
-Developed by Anuja Mishra.  
-Inspiration and APIs provided by Piston project and open-source libraries.
-
----
-
-Thank you for using CodeColab! 🚀
+Developed by Anuja Mishra.
 
