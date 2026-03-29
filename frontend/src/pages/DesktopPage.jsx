@@ -59,7 +59,7 @@ function Desktop({ openSideBar, setOpenSideBar, currentUser, typing, handleLangu
                 <h3 className="text-lg font-semibold mb-2">Input</h3>
                 <textarea
                   name="codeInput"
-                  className="mb-3 bg-gray-800 p-3 rounded-lg flex-1 border border-gray-700 w-full resize-none text-sm overflow-hidden"
+                  className="mb-3 bg-gray-800 p-3 rounded-lg flex-1 border border-gray-700 w-full resize-none text-sm "
                   placeholder="Write your code input here..."
                   value={codeInput}
                   onChange={handleCodeInputChange}
@@ -79,7 +79,7 @@ function Desktop({ openSideBar, setOpenSideBar, currentUser, typing, handleLangu
 
                 <textarea
                   name="output"
-                  className="bg-gray-800 p-2 md:p-3 rounded-lg flex-1 border-2 border-gray-700 w-full resize-none text-sm md:text-base overflow-hidden"
+                  className="bg-gray-800 p-2 md:p-3 rounded-lg flex-1 border-2 border-gray-700 w-full resize-none text-sm md:text-base"
                   placeholder="Output will appear here..."
                   value={output}
                   readOnly

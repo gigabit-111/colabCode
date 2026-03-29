@@ -30,7 +30,7 @@ function Mobile({
   output,
 }) {
   return (
-    <div className="h-screen flex flex-col w-screen overflow-hidden">
+    <div className="h-screen flex flex-col w-screen ">
       {/* Mobile Sidebar Overlay */}
       {openSideBar && (
         <div className="absolute inset-0 z-50 flex">
