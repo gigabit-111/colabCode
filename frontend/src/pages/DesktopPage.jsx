@@ -8,7 +8,7 @@ import MonacoEditor from "../components/Editor/MonacoEditor"
 
 function Desktop({ openSideBar, setOpenSideBar, currentUser, typing, handleLanguageChange, copyRoomId, handleUserLeft, users, currentRoom, language, setLanguage, code, handleEditorChange, codeInput, handleCodeInputChange, output, handleRunCode, isExecuting, outputLoading }) {
   return (
-    <div className="h-screen flex flex-col w-screen overflow-hidden">
+    <div className="h-screen flex flex-col w-screen">
       <PanelGroup direction="horizontal">
         <Panel
           defaultSize={openSideBar ? 25 : 0}
